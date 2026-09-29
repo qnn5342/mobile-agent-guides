@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>1 bot Telegram, nhiều profile Hermes theo từng topic — hướng dẫn học viên</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:  #f9f3dd;
+    --green1: #1e606e;
+    --green2: #0a4254;
+    --orange: #e9b40f;
+    --navy:   #0e2638;
+    --danger: #b03a2e;
+    --info:   #1e606e;
+    --ok:     #196b3c;
+    --code-bg:#0e2638;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--cream); color: var(--navy);
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif; font-weight: 400;
+    line-height: 1.55;
+  }
+  code, pre, .kbd { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+  .container { max-width: 1180px; margin: 0 auto; padding: 24px; }
+  .grid-layout { display: grid; grid-template-columns: 262px minmax(0, 1fr); gap: 32px; align-items: start; }
+  @media (max-width: 900px) { .grid-layout { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Left rail nav */
+  nav.rail {
+    position: sticky; top: 24px;
+    background: rgba(30, 96, 110, 0.05);
+    border-left: 3px solid var(--green1);
+    padding: 18px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    max-height: calc(100vh - 48px); overflow-y: auto;
+  }
+  nav.rail h2 {
+    font-weight: 700; color: var(--green2); font-size: 13px;
+    text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 12px;
+  }
+  nav.rail ol { list-style: none; padding: 0; margin: 0; counter-reset: item; }
+  nav.rail li { padding: 6px 0; counter-increment: item; }
+  nav.rail a { color: var(--navy); text-decoration: none; display: flex; gap: 8px; align-items: baseline; }
+  nav.rail a:hover { color: var(--orange); }
+  nav.rail a::before {
+    content: counter(item, decimal-leading-zero);
+    color: var(--green1); font-weight: 700; font-size: 12px; min-width: 24px;
+  }
+
+  /* Headings */
+  h1.hero { font-size: clamp(28px, 3.6vw, 44px); font-weight: 700; line-height: 1.15; margin: 0 0 8px; }
+  .overline {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--green1);
+  }
+  h2.section {
+    font-size: 25px; font-weight: 700; color: var(--navy);
+    border-bottom: 2px solid var(--green1);
+    padding-bottom: 8px; margin: 46px 0 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  h2.section .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 999px;
+    background: var(--green1); color: var(--cream);
+    font-size: 15px; font-weight: 700; flex: 0 0 auto;
+  }
+  h2.section .ico { color: var(--green1); flex: 0 0 auto; }
+  h3.sub { font-size: 17.5px; font-weight: 700; color: var(--green2); margin: 26px 0 8px; display: flex; align-items: center; gap: 8px; }
+
+  /* Callouts */
+  .callout { padding: 14px 18px; border-radius: 6px; margin: 14px 0; display: flex; gap: 12px; align-items: flex-start; }
+  .callout .icon { flex: 0 0 auto; margin-top: 2px; }
+  .callout p { margin: 0; }
+  .callout p + p { margin-top: 8px; }
+  .callout strong { font-weight: 700; }
+  .callout.warn   { background: rgba(176, 58, 46, 0.08);  border-left: 4px solid var(--danger); }
+  .callout.warn .icon { color: var(--danger); }
+  .callout.info   { background: rgba(30, 96, 110, 0.08);  border-left: 4px solid var(--info); }
+  .callout.info .icon { color: var(--info); }
+  .callout.ok     { background: rgba(25, 107, 60, 0.08);  border-left: 4px solid var(--ok); }
+  .callout.ok .icon { color: var(--ok); }
+  .callout.accent { background: rgba(233, 180, 15, 0.10); border-left: 4px solid var(--orange); }
+  .callout.accent .icon { color: #a97f06; }
+
+  /* Tables */
+  .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0; }
+  .tw table.d6 { margin: 0; }
+  table.d6 { border-collapse: collapse; width: 100%; font-size: 14px; margin: 14px 0; }
+  table.d6 th { background: var(--green1); color: var(--cream); text-align: left; padding: 10px 12px; font-weight: 700; }
+  table.d6 td { padding: 10px 12px; border-bottom: 1px solid rgba(14, 38, 56, 0.14); vertical-align: top; }
+  table.d6 tr:last-child td { border-bottom: 0; }
+  table.d6 code { background: rgba(14, 38, 56, 0.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  table.d6.tight th:first-child { width: 30%; }
+
+  /* Code blocks + copy button */
+  .code-wrap { position: relative; margin: 14px 0; }
+  pre.code {
+    background: var(--code-bg); color: var(--cream);
+    padding: 16px 18px; border-radius: 8px;
+    overflow-x: auto; font-size: 13.5px; line-height: 1.62; margin: 0;
+  }
+  pre.code .cmt { color: #7fa3ab; }
+  pre.code .var { color: var(--orange); }
+  button.copy {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(255,255,255,0.08); color: var(--cream);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
+    padding: 4px 10px; font-size: 11px; cursor: pointer;
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  button.copy:hover { background: rgba(233, 180, 15, 0.2); border-color: var(--orange); }
+  button.copy.copied { background: rgba(25, 107, 60, 0.35); border-color: var(--ok); }
+
+  p code, li code, td code { background: rgba(14, 38, 56, 0.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin: 8px 0; }
+  ul.dots { padding-left: 22px; }
+  ul.dots li { margin: 6px 0; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; padding: 3px 10px;
+    border-radius: 999px; margin-right: 4px;
+  }
+  .badge.blocked { background: rgba(176,58,46,0.15); color: var(--danger); }
+  .badge.staged  { background: rgba(30,96,110,0.15); color: var(--green2); }
+  .badge.done    { background: rgba(25,107,60,0.15); color: var(--ok); }
+  .badge.accent  { background: rgba(233,180,15,0.18); color: #8a6804; }
+
+  /* Hero */
+  .hero-block {
+    background: linear-gradient(135deg, rgba(30,96,110,0.09), rgba(233,180,15,0.07));
+    padding: 26px 30px; border-radius: 10px; margin-bottom: 30px;
+  }
+  .hero-top { display: flex; gap: 18px; align-items: center; }
+  .hero-top img, .hero-top svg { width: 66px; height: 66px; flex: 0 0 auto; }
+  .hero-meta { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--green2); margin-top: 14px; }
+  .hero-meta span strong { color: var(--navy); }
+
+  /* Time pill */
+  .timepill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(30,96,110,0.10); color: var(--green2);
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px;
+  }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+  .flow-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+  .flow .node {
+    flex: 1 1 0; min-width: 150px;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(30,96,110,0.28); border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .flow .node .k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--green1); }
+  .flow .node .v { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
+  .flow .node .d { font-size: 12.5px; color: var(--green2); margin-top: 4px; }
+  .flow .arrow { display: flex; align-items: center; color: var(--green1); font-weight: 700; font-size: 20px; flex: 0 0 auto; }
+  .flow .flow-sep { display: flex; justify-content: center; color: var(--green1); font-weight: 700; font-size: 18px; line-height: 1; margin: -4px 0; }
+  @media (max-width: 560px) {
+    .flow-row { flex-direction: column; }
+    .flow .node { min-width: 0; width: 100%; }
+    .flow .arrow { transform: rotate(90deg); justify-content: center; }
+    .flow .flow-sep { display: none; }
+  }
+
+  /* Footer */
+  footer.doc-foot { font-size: 12px; color: var(--green2); opacity: .85; margin-top: 52px; padding-top: 16px; border-top: 1px solid rgba(14,38,56,0.14); }
+
+  @media print {
+    nav.rail { display: none; }
+    .grid-layout { grid-template-columns: 1fr; }
+    button.copy { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="hero-block">
+    <div class="hero-top">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="The1ight">
+        <defs>
+          <linearGradient id="bg" x1="64" y1="448" x2="448" y2="64" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#15333B"/><stop offset="1" stop-color="#214C54"/>
+          </linearGradient>
+          <linearGradient id="beam" x1="150" y1="390" x2="372" y2="110" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#EAB308"/><stop offset="0.52" stop-color="#FFD94C"/><stop offset="1" stop-color="#FDF5DA"/>
+          </linearGradient>
+        </defs>
+        <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+        <path d="M194 184 283 122h55v268h-73V211l-71 44v-71Z" fill="url(#beam)"/>
+        <path d="m360 100 11 30 30 11-30 11-11 30-11-30-30-11 30-11 11-30Z" fill="#FFF8D6"/>
+        <rect x="145" y="390" width="222" height="14" rx="7" fill="url(#beam)" opacity=".9"/>
+      </svg>
+      <div>
+        <div class="overline"><strong style="color:var(--green2)">The1ight</strong> · Mobile Agent · Hermes Agent · Hướng dẫn học viên</div>
+        <h1 class="hero">1 bot Telegram, nhiều <span style="color:var(--green1)">profile Hermes</span> theo từng <span style="color:#a97f06">topic</span></h1>
+      </div>
+    </div>
+    <div class="hero-meta">
+      <span><strong>Kết quả:</strong> nhóm AI OS có phòng riêng cho từng vai</span>
+      <span><strong>Thời gian:</strong> 30–45 phút</span>
+      <span><strong>Yêu cầu trước:</strong> Hermes đã chạy trên VPS</span>
+    </div>
+  </header>
+
+  <div class="grid-layout">
+
+    <nav class="rail" aria-label="Mục lục">
+      <h2>Nội dung</h2>
+      <ol>
+        <li><a href="#result">Kết quả cuối cùng</a></li>
+        <li><a href="#model">Hiểu đúng mô hình</a></li>
+        <li><a href="#prereq">Chuẩn bị</a></li>
+        <li><a href="#group">Tạo supergroup có Topics</a></li>
+        <li><a href="#bot">Tạo bot Telegram</a></li>
+        <li><a href="#ids">Lấy chat_id và thread_id</a></li>
+        <li><a href="#profiles">Tạo 3 profile</a></li>
+        <li><a href="#vai">Nối model và đặt vai</a></li>
+        <li><a href="#routes">Bật multiplex + routes</a></li>
+        <li><a href="#verify">Chạy và kiểm tra</a></li>
+        <li><a href="#trouble">Sự cố thường gặp</a></li>
+        <li><a href="#video">Video tham khảo</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <!-- ─── 01 · RESULT ─── -->
+      <h2 class="section" id="result">
+        <span class="num">01</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+        Kết quả cuối cùng
+      </h2>
+
+      <p>Làm xong bài này, anh chị có <strong>một nhóm Telegram duy nhất</strong>, <strong>một bot duy nhất</strong>, nhưng
+      bên trong là <strong>nhiều trợ lý khác nhau</strong> — mỗi phòng một vai, một bộ nhớ, một bộ kỹ năng riêng.</p>
+
+      <table class="d6">
+        <thead><tr><th>Topic trong Telegram</th><th>Profile Hermes</th><th>Dùng cho</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Nghiên cứu</strong></td><td><code>research</code></td><td>đọc tài liệu, tổng hợp nguồn, so sánh phương án</td></tr>
+          <tr><td><strong>Viết nội dung</strong></td><td><code>writer</code></td><td>draft bài, biên tập, đóng gói theo từng kênh</td></tr>
+          <tr><td><strong>Vận hành</strong></td><td><code>ops</code></td><td>task, nhắc việc, theo dõi tiến độ, checklist</td></tr>
+          <tr><td><strong>General</strong> (mặc định)</td><td><code>ops</code></td><td>cửa vào chung, nơi chưa rõ việc thuộc phòng nào</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout ok">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <p><strong>Điểm quan trọng nhất:</strong> nhắn trong topic <em>Nghiên cứu</em> thì chỉ <code>research</code> trả lời.
+        Những gì anh chị dạy nó ở đó <strong>không chảy sang</strong> topic <em>Viết nội dung</em>.</p>
+      </div>
+
+      <!-- ─── 02 · MODEL ─── -->
+      <h2 class="section" id="model">
+        <span class="num">02</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 9h6v6H9z"></path></svg>
+        Hiểu đúng mô hình
+      </h2>
+
+      <p>Điều làm nhiều người đi sai đường: tưởng rằng muốn có nhiều trợ lý thì phải tạo <strong>nhiều bot</strong>.
+      Không cần. Hermes có sẵn cơ chế <strong>định tuyến theo nơi tin nhắn đến</strong>.</p>
+
+      <div class="flow">
+        <div class="flow-row">
+          <div class="node"><div class="k">Bước 1</div><div class="v">Group Telegram</div><div class="d">Topics bật. Mỗi phòng là một <code>thread_id</code>.</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="k">Bước 2</div><div class="v">1 bot duy nhất</div><div class="d">Một token. Bot ở trong group, nhận mọi tin.</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="k">Bước 3</div><div class="v">Gateway</div><div class="d">Chạy ở chế độ <code>multiplex_profiles</code> — "tổng đài".</div></div>
+        </div>
+        <div class="flow-sep">↓</div>
+        <div class="flow-row">
+          <div class="node"><div class="k">Bước 4</div><div class="v">profile_routes</div><div class="d">Tra bảng: <code>chat_id</code> + <code>thread_id</code> này thuộc profile nào.</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="k">Bước 5</div><div class="v">Profile trả lời</div><div class="d">Dùng memory, SOUL, skill, model và API key của chính nó.</div></div>
+        </div>
+      </div>
+
+      <h3 class="sub">Vì sao chọn cách này thay vì mỗi phòng một bot</h3>
+      <table class="d6 tight">
+        <thead><tr><th>Tiêu chí</th><th>1 bot + routes <span class="badge accent">bài này</span></th><th>Mỗi phòng 1 bot</th></tr></thead>
+        <tbody>
+          <tr><td>Số bot phải quản</td><td><strong>1</strong> token, 1 chỗ dán</td><td>N bot, N lần tạo với BotFather</td></tr>
+          <tr><td>Thêm phòng mới</td><td>Sửa 5 dòng YAML</td><td>Tạo bot mới, thêm vào group, cấp quyền lại</td></tr>
+          <tr><td>Cách ly giữa các vai</td><td>Có — mỗi profile vẫn tách memory/key riêng</td><td>Có — tách ở mức tiến trình</td></tr>
+          <tr><td>Cần chạy bao nhiêu tiến trình</td><td>1 gateway</td><td>N gateway</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Topic không phải là ranh giới bảo mật.</strong> Topic chỉ chia <em>phiên làm việc</em>.
+          Cách ly thật nằm ở <strong>profile</strong>: tool nào được dùng, key nào được đọc, memory nào được nhớ.</p>
+          <p>Nếu một người vào được group, họ vào được mọi topic. Đừng để dữ liệu nhạy cảm trong group có người ngoài.</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p><strong>"Topic" trong bài này = Forum Topics</strong> — chỉ có trong <em>supergroup</em>, không có trong group thường
+        và không có trong channel phát sóng. Nếu mục Topics chưa thấy trong phần cài đặt nhóm, xem Bước 04.</p>
+      </div>
+
+      <!-- ─── 03 · PREREQ ─── -->
+      <h2 class="section" id="prereq">
+        <span class="num">03</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M2 12h20"></path></svg>
+        Chuẩn bị
+      </h2>
+
+      <p>Bài này nối tiếp buổi cài Hermes lên VPS. Anh chị <strong>không cài lại Hermes</strong> ở đây.</p>
+
+      <table class="d6">
+        <thead><tr><th>Thứ</th><th>Yêu cầu</th><th>Kiểm tra thế nào</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Hermes trên VPS</strong></td><td>Lệnh <code>hermes</code> chạy được; gateway sống</td><td><code>hermes gateway status</code></td></tr>
+          <tr><td><strong>Telegram</strong></td><td>App trên điện thoại <em>và</em> Telegram Desktop hoặc Web</td><td>Desktop/Web dùng để copy link lấy ID (Bước 06)</td></tr>
+          <tr><td><strong>Quyền admin nhóm</strong></td><td>Có quyền sửa cài đặt nhóm + thêm bot</td><td>vào Group Settings xem sửa được không</td></tr>
+          <tr><td><strong>API key model</strong></td><td>Một key dùng được cho cả 3 profile</td><td>Nous Portal / OpenRouter / OpenAI</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>Anh chị không cần thuê thêm VPS hay mua thêm gì. Máy đang chạy Hermes là đủ.</p>
+      </div>
+
+      <!-- ─── 04 · GROUP ─── -->
+      <h2 class="section" id="group">
+        <span class="num">04</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path></svg>
+        Tạo supergroup có Topics
+      </h2>
+
+      <ol class="steps">
+        <li>Mở Telegram → nút <strong>New Group</strong> → đặt tên, ví dụ <code>AI OS của tôi</code>.</li>
+        <li>Vào nhóm vừa tạo → chạm tên nhóm ở trên cùng → mở <strong>Group Settings</strong>.</li>
+        <li>Tìm mục <strong>Topics</strong> → bật lên.</li>
+        <li>Telegram sẽ hỏi chuyển nhóm thành <strong>supergroup</strong> → đồng ý. Đây là bước bắt buộc.</li>
+        <li>Tạo 4 topic: <strong>General</strong> (đã có sẵn), <strong>Nghiên cứu</strong>, <strong>Viết nội dung</strong>, <strong>Vận hành</strong>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p>Nếu trong Group Settings <strong>không có mục Topics</strong>, gần như chắc chắn nhóm đang là group thường
+        và chưa chuyển thành supergroup. Thêm một thành viên thứ hai, hoặc bật Topics lại từ đầu — Telegram sẽ tự chuyển.</p>
+      </div>
+
+      <div class="callout accent">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span>
+        <p><strong>Đặt tên phòng theo việc, không theo chức danh.</strong> "Nghiên cứu" và "Viết nội dung" rõ hơn
+        "Marketing" — vì Marketing vừa có thể là nghiên cứu thị trường vừa là viết content, và hai việc đó cần hai vai khác nhau.</p>
+      </div>
+
+      <!-- ─── 05 · BOT ─── -->
+      <h2 class="section" id="bot">
+        <span class="num">05</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="10" x="3" y="11" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><path d="M8 16h.01"></path><path d="M16 16h.01"></path></svg>
+        Tạo bot Telegram
+      </h2>
+
+      <p>Mở Telegram, tìm <strong>@BotFather</strong> (có tick xanh), rồi gõ lần lượt:</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c1">/newbot
+<span class="cmt"># BotFather hỏi tên hiển thị:</span>  AI OS của tôi
+<span class="cmt"># rồi hỏi username (phải kết thúc bằng "bot"):</span>  ai_os_cua_toi_bot
+
+<span class="cmt"># BotFather trả về token dạng:</span>
+<span class="var">8123456789:AAH...</span>   <span class="cmt"># ĐÂY LÀ MẬT KHẨU. Không dán vào chat, không commit lên git.</span></pre>
+        <button class="copy" data-target="c1">Copy</button>
+      </div>
+
+      <h3 class="sub">Bắt buộc: tắt Group Privacy</h3>
+      <p>Mặc định Telegram chỉ đưa cho bot những tin có nhắc tên nó. Trong mô hình của bài này, bot phải
+      <strong>đọc được tin thường</strong> trong từng topic, nếu không bảng định tuyến không bao giờ chạy.</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c2">/setprivacy
+<span class="cmt"># chọn đúng bot → chọn Disable</span>
+<span class="cmt"># kết quả phải là: Privacy mode is disabled</span></pre>
+        <button class="copy" data-target="c2">Copy</button>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p>Group Privacy được đặt <strong>trên từng bot</strong>, không đặt theo nhóm. Một khi đã Disable,
+        bot này đọc mọi tin ở <em>mọi nhóm</em> nó tham gia — nên đừng thêm bot này vào nhóm có người ngoài.</p>
+      </div>
+
+      <h3 class="sub">Nên làm thêm: bật Threaded Mode</h3>
+      <div class="code-wrap">
+        <pre class="code" id="c3">/mybots  → chọn bot → Bot Settings → Threads Settings
+<span class="cmt"># bật Threaded Mode</span></pre>
+        <button class="copy" data-target="c3">Copy</button>
+      </div>
+      <p>Mục này cần khi anh chị muốn dùng topic <em>trong chat riêng</em> với bot (kiểu nhiều phiên song song).
+      Với nhóm có Topics thì quyền bật nằm ở phần cài đặt nhóm, nhưng bật sẵn ở đây không gây hại.</p>
+
+      <!-- ─── 06 · IDS ─── -->
+      <h2 class="section" id="ids">
+        <span class="num">06</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        Thêm bot vào group, lấy <code>chat_id</code> và <code>thread_id</code>
+      </h2>
+
+      <h3 class="sub">6a. Thêm bot vào nhóm</h3>
+      <ol class="steps">
+        <li>Vào nhóm → <strong>Add Members</strong> → tìm username bot ở Bước 05 → thêm vào.</li>
+        <li>Vào <strong>Manage Group → Administrators</strong> → thêm bot làm admin.</li>
+        <li>Bật quyền <strong>Manage Topics</strong> cho bot (nếu muốn bot tự tạo hoặc ghim topic).</li>
+        <li>Bấm <strong>Save</strong> — nhiều bạn quên bước này và tưởng bot lỗi.</li>
+      </ol>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>Bot <strong>không bắt buộc</strong> phải là admin để trả lời. Admin + Manage Topics chỉ cần khi
+        muốn bot tự tạo topic, ghim tin, hoặc xoá tin.</p>
+      </div>
+
+      <h3 class="sub">6b. Lấy <code>chat_id</code> và <code>thread_id</code></h3>
+      <p>Cách chắc chắn nhất: mở <strong>Telegram Desktop hoặc Web</strong>, vào đúng topic, rồi copy link của topic.</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c4"><span class="cmt"># Link topic có dạng:</span>
+https://t.me/c/<span class="var">1234567890</span>/<span class="var">5</span>
+                   <span class="cmt">↑</span>          <span class="cmt">↑</span>
+             <span class="cmt">group_id     thread_id</span>
+
+<span class="cmt"># chat_id của supergroup = "-100" + group_id</span>
+<span class="var">-1001234567890</span>
+
+<span class="cmt"># Vậy hai giá trị cần ghi lại:</span>
+<span class="cmt">#   chat_id   = -1001234567890</span>
+<span class="cmt">#   thread_id = 5</span></pre>
+        <button class="copy" data-target="c4">Copy</button>
+      </div>
+
+      <p>Ghi lại thành bảng — anh chị sẽ dùng đúng những con số này ở Bước 09:</p>
+
+      <table class="d6 tight">
+        <thead><tr><th>Topic</th><th>thread_id (ví dụ)</th><th>Dùng cho</th></tr></thead>
+        <tbody>
+          <tr><td>General</td><td><em>không tạo route riêng</em></td><td>rơi về route cấp group</td></tr>
+          <tr><td>Nghiên cứu</td><td><code>3</code></td><td>profile <code>research</code></td></tr>
+          <tr><td>Viết nội dung</td><td><code>5</code></td><td>profile <code>writer</code></td></tr>
+          <tr><td>Vận hành</td><td><code>7</code></td><td>profile <code>ops</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p><strong>Số trong bài chỉ là ví dụ.</strong> Nhóm của anh chị sẽ có số khác. Đây là chỗ hay sai nhất:
+        copy nguyên số mẫu rồi thắc mắc sao bot không chịu trả lời đúng phòng.</p>
+      </div>
+
+      <div class="callout accent">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span>
+        <p><strong>General là topic đặc biệt</strong> — Telegram xử lý nó khác các topic thường (tuỳ phiên bản, ID có thể trống hoặc là <code>1</code>).
+        Vì vậy đừng tạo route riêng cho General: để nó rơi về route cấp group. Đó là lý do ở Bước 09 ta đặt route cấp group làm "cửa vào chung".</p>
+      </div>
+
+      <!-- ─── 07 · PROFILES ─── -->
+      <h2 class="section" id="profiles">
+        <span class="num">07</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg>
+        Tạo 3 profile Hermes
+      </h2>
+
+      <p>SSH vào VPS rồi tạo profile. Một profile là một "nhân viên" trọn vẹn: memory riêng, SOUL riêng,
+      skill riêng, key riêng, thư mục riêng.</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c5">hermes profile create research --description "Nghiên cứu, đọc tài liệu, tổng hợp nguồn"
+hermes profile create writer   --description "Viết nội dung, biên tập, đóng gói theo kênh"
+hermes profile create ops      --description "Vận hành, task, nhắc việc, theo dõi tiến độ"
+
+hermes profile list   <span class="cmt"># phải thấy đủ 3 profile mới</span></pre>
+        <button class="copy" data-target="c5">Copy</button>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p><code>--description</code> không phải để trang trí. Mô tả giúp hệ thống biết profile này giỏi việc gì —
+        hữu ích khi sau này anh chị để AI tự phân việc theo vai thay vì theo tên.</p>
+      </div>
+
+      <p>Mỗi profile có thư mục riêng. Đây là chỗ anh chị sẽ chỉnh về sau:</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c6">~/.hermes/profiles/research/    <span class="cmt"># memory, SOUL, .env, skills của vai Nghiên cứu</span>
+~/.hermes/profiles/writer/      <span class="cmt"># ... của vai Viết nội dung</span>
+~/.hermes/profiles/ops/         <span class="cmt"># ... của vai Vận hành</span></pre>
+        <button class="copy" data-target="c6">Copy</button>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p><strong>Đừng tạo profile để lưu bot token.</strong> Token nằm ở config của gateway (Bước 09) —
+        không phải ở đây. Một token bị hai nơi cùng dùng sẽ làm gateway khởi động lỗi.</p>
+      </div>
+
+      <!-- ─── 08 · VAI ─── -->
+      <h2 class="section" id="vai">
+        <span class="num">08</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+        Nối model và đặt vai cho từng profile
+      </h2>
+
+      <h3 class="sub">8a. Nối model provider</h3>
+      <p>Chạy wizard cho từng profile. Mỗi profile lưu key vào <code>.env</code> riêng — key không dùng chung.</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c7">hermes -p research setup
+hermes -p writer setup
+hermes -p ops setup</pre>
+        <button class="copy" data-target="c7">Copy</button>
+      </div>
+
+      <h3 class="sub">8b. Viết SOUL — đây mới là thứ làm nên khác biệt</h3>
+      <p>Nếu bỏ qua bước này, ba profile vẫn là ba bản sao giống nhau: cùng giọng, cùng cách trả lời.
+      SOUL là nơi anh chị nói cho nó biết nó là ai.</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c8">hermes config path                          <span class="cmt"># xem config của profile đang dùng</span>
+nano ~/.hermes/profiles/research/SOUL.md    <span class="cmt"># sửa vai cho từng profile</span>
+nano ~/.hermes/profiles/writer/SOUL.md
+nano ~/.hermes/profiles/ops/SOUL.md</pre>
+        <button class="copy" data-target="c8">Copy</button>
+      </div>
+
+      <table class="d6 tight">
+        <thead><tr><th>Profile</th><th>Vai nên viết trong SOUL</th></tr></thead>
+        <tbody>
+          <tr><td><code>research</code></td><td>Dẫn nguồn, nói rõ chỗ chưa chắc. Phân biệt <em>dữ kiện</em> và <em>suy đoán</em>. Không kết luận khi thiếu bằng chứng.</td></tr>
+          <tr><td><code>writer</code></td><td>Viết theo giọng đã chốt. Không dùng từ đao to búa lớn. Không mở bài bằng "Trong thời đại…".</td></tr>
+          <tr><td><code>ops</code></td><td>Ngắn, có việc, có người, có hạn. Luôn kết bằng bước tiếp theo cụ thể.</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── 09 · ROUTES ─── -->
+      <h2 class="section" id="routes">
+        <span class="num">09</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+        Bật multiplex và khai báo <code>profile_routes</code>
+      </h2>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Điểm dễ sai nhất của cả bài:</strong> hai thứ dưới đây thuộc về <strong>profile mặc định</strong>
+          (<code>default</code>), không phải profile nào khác. Vì gateway của profile mặc định mới là cái chạy
+          ở chế độ "tổng đài".</p>
+          <p>Config cần sửa: <code>~/.hermes/config.yaml</code></p>
+        </div>
+      </div>
+
+      <h3 class="sub">9a. Bật multiplex</h3>
+      <div class="code-wrap">
+        <pre class="code" id="c9">hermes config set gateway.multiplex_profiles true</pre>
+        <button class="copy" data-target="c9">Copy</button>
+      </div>
+
+      <h3 class="sub">9b. Khai báo đường định tuyến</h3>
+      <p>Mở <code>~/.hermes/config.yaml</code> và thêm khối <code>profile_routes</code> dưới <code>gateway:</code>.
+      Thay <code>-1001234567890</code> và các <code>thread_id</code> bằng số thật của anh chị.</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c10">gateway:
+  multiplex_profiles: true
+
+  profile_routes:
+    <span class="cmt"># Route cấp GROUP — "cửa vào chung", cũng là nơi General rơi về</span>
+    - name: aios-group-default
+      platform: telegram
+      chat_id: <span class="var">"-1001234567890"</span>
+      profile: ops
+
+    <span class="cmt"># Topic Nghiên cứu</span>
+    - name: topic-nghien-cuu
+      platform: telegram
+      chat_id: <span class="var">"-1001234567890"</span>
+      thread_id: <span class="var">"3"</span>
+      profile: research
+
+    <span class="cmt"># Topic Viết nội dung</span>
+    - name: topic-viet-noi-dung
+      platform: telegram
+      chat_id: <span class="var">"-1001234567890"</span>
+      thread_id: <span class="var">"5"</span>
+      profile: writer
+
+    <span class="cmt"># Topic Vận hành</span>
+    - name: topic-van-hanh
+      platform: telegram
+      chat_id: <span class="var">"-1001234567890"</span>
+      thread_id: <span class="var">"7"</span>
+      profile: ops</pre>
+        <button class="copy" data-target="c10">Copy</button>
+      </div>
+
+      <div class="callout accent">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span>
+        <p><strong>Route càng cụ thể càng thắng.</strong> Thứ tự ưu tiên khi nhiều route cùng khớp:
+        route có cả <code>chat_id</code> + <code>thread_id</code> &gt; route chỉ có <code>chat_id</code> &gt; route chỉ có server.
+        Tin nhắn không khớp route nào sẽ về profile mặc định.</p>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p>Nếu một route khớp nhưng profile đích <strong>chưa được tạo</strong>, gateway sẽ <strong>từ chối</strong> tin nhắn đó
+        và ghi log — nó <em>không</em> âm thầm trả lời bằng profile mặc định. Đây là chủ ý để lỗi cấu hình không bị che.</p>
+      </div>
+
+      <!-- ─── 10 · VERIFY ─── -->
+      <h2 class="section" id="verify">
+        <span class="num">10</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg>
+        Chạy và kiểm tra
+      </h2>
+
+      <div class="code-wrap">
+        <pre class="code" id="c11">hermes gateway restart   <span class="cmt"># nạp lại config</span>
+hermes gateway status    <span class="cmt"># gateway phải đang chạy</span>
+hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng</span></pre>
+        <button class="copy" data-target="c11">Copy</button>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p><strong>Đừng chạy <code>hermes -p research gateway start</code>.</strong> Khi multiplex đang bật,
+        việc này là lỗi cứng — vì gateway mặc định đã phục vụ profile đó rồi. Chạy thêm sẽ chiếm trùng
+        kênh của nó. Chỉ cần quản lý <strong>một</strong> gateway.</p>
+      </div>
+
+      <h3 class="sub">Bài kiểm tra cách ly — làm đủ 4 bước</h3>
+      <table class="d6">
+        <thead><tr><th>#</th><th>Làm gì</th><th>Kết quả đúng</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Trong topic <strong>Nghiên cứu</strong>, nhắn: <em>"Nhớ giúp tôi: mã dự án là ORCHID."</em></td><td><code>research</code> xác nhận đã nhớ</td></tr>
+          <tr><td>2</td><td>Trong topic <strong>Viết nội dung</strong>, hỏi: <em>"Mã dự án là gì?"</em></td><td><strong>Không biết</strong> — đây là bằng chứng cách ly đang chạy</td></tr>
+          <tr><td>3</td><td>Trong topic <strong>Vận hành</strong>, hỏi cùng câu đó</td><td>Cũng không biết</td></tr>
+          <tr><td>4</td><td>Nhắn trong <strong>General</strong></td><td>Trả lời bằng <code>ops</code> — đúng như route cấp group</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout ok">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <p>Nếu bước 2 mà <code>writer</code> <strong>vẫn biết</strong> mã dự án, tức là tin nhắn chưa được định tuyến —
+        thường do <code>thread_id</code> sai. Xem Bước 11.</p>
+      </div>
+
+      <!-- ─── 11 · TROUBLE ─── -->
+      <h2 class="section" id="trouble">
+        <span class="num">11</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+        Sự cố thường gặp
+      </h2>
+
+      <table class="d6">
+        <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Cách sửa</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Log báo <code>The chat is not a forum</code></td>
+            <td>Nhóm chưa bật Topics</td>
+            <td>Quay lại Bước 04. Đây là cài đặt phía Telegram, bot không bật hộ được.</td>
+          </tr>
+          <tr>
+            <td>Bot im lặng khi nhắn tin thường trong topic; chỉ trả lời khi được nhắc tên</td>
+            <td>Group Privacy của bot còn bật</td>
+            <td><code>/setprivacy</code> → <strong>Disable</strong>. Xem cảnh báo ở Bước 05.</td>
+          </tr>
+          <tr>
+            <td>Mọi topic đều trả lời bằng cùng một vai</td>
+            <td><code>thread_id</code> sai, nên không route nào khớp và mọi tin rơi về route cấp group</td>
+            <td>Copy lại link từng topic, lấy đúng số (Bước 06).</td>
+          </tr>
+          <tr>
+            <td>Gateway từ chối tin và log ra tên route + profile đích</td>
+            <td>Route khớp nhưng profile chưa tạo, hoặc nằm ngoài danh sách được phục vụ</td>
+            <td>Tạo profile còn thiếu (Bước 07), hoặc kiểm tra <code>hermes profile list</code>.</td>
+          </tr>
+          <tr>
+            <td>Khởi động gateway lỗi vì trùng token</td>
+            <td>Cùng một token bị hai profile cùng dùng</td>
+            <td>Mỗi token chỉ thuộc một profile. Một bot = một chỗ khai báo.</td>
+          </tr>
+          <tr>
+            <td><code>hermes -p writer gateway start</code> báo lỗi</td>
+            <td>Multiplex đang bật — đây là hành vi đúng</td>
+            <td>Không start gateway cho profile phụ. Chỉ quản lý gateway mặc định.</td>
+          </tr>
+          <tr>
+            <td>Bật Topics rồi nhưng bot vẫn không thấy gì</td>
+            <td>Bot chưa được lưu quyền admin, hoặc chưa được thêm lại sau khi đổi cài đặt</td>
+            <td>Kiểm tra <strong>Save Changes</strong>, và xác nhận bot còn trong nhóm.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>Khi cần tra lệnh, dùng <code>hermes &lt;lệnh&gt; --help</code> thay vì đoán. Tài liệu trong sản phẩm
+        luôn đúng hơn bài viết hay video nào.</p>
+      </div>
+
+      <!-- ─── 12 · VIDEO ─── -->
+      <h2 class="section" id="video">
+        <span class="num">12</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg>
+        Video tham khảo
+      </h2>
+
+      <p>Đây là các video đã có sẵn về chủ đề "một bot — nhiều agent" và "nhiều profile". Xem để
+      <em>hình dung luồng</em>, rồi vẫn làm theo guide này để có số liệu đúng.</p>
+
+      <table class="d6">
+        <thead><tr><th>Video</th><th>Kênh</th><th>Vì sao đáng xem</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><a href="https://youtu.be/J-CTElx58Bs" target="_blank" rel="noopener">Cara Susun Banyak Hermes Agent Dalam Satu Telegram | Telegram Topics</a></td>
+            <td>faheem wahid</td>
+            <td>Sát chủ đề nhất: nhiều agent Hermes trong <em>một</em> Telegram, dùng Topics. Video tiếng Indonesia — xem hình là hiểu.</td>
+          </tr>
+          <tr>
+            <td><a href="https://youtu.be/z3zwfWanimQ" target="_blank" rel="noopener">Run Multiple AI Agents From ONE Bot — Hermes Setup From Scratch (Telegram + Discord)</a></td>
+            <td>Code With Arjun</td>
+            <td>Đúng bài toán "1 bot, nhiều agent".</td>
+          </tr>
+          <tr>
+            <td><a href="https://youtu.be/fkPqWDR0_hY" target="_blank" rel="noopener">Hermes Agent: Run Multiple Isolated Profiles</a></td>
+            <td>ActionableOps</td>
+            <td>Giải thích phần <em>cách ly profile</em> — bổ trợ trực tiếp cho Bước 07–08.</td>
+          </tr>
+          <tr>
+            <td><a href="https://youtu.be/WU8RVxQ8HdE" target="_blank" rel="noopener">Hermes Agent Bot Mode Guide (Setup and Workflows)</a></td>
+            <td>Superbash (BoxminingAI)</td>
+            <td>Tổng quan bot mode và các luồng dùng thực tế.</td>
+          </tr>
+          <tr>
+            <td><a href="https://youtu.be/HCmKzhsx7Kk" target="_blank" rel="noopener">Who Needs Discord? Organizing OpenClaw Agents in Telegram w/ Topics</a></td>
+            <td>Tonbi's AI Garage</td>
+            <td>Cùng ý tưởng nhưng trên OpenClaw — hữu ích để hiểu <em>nguyên lý</em> tổ chức phòng theo topic.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p><strong>Video được quay ở một phiên bản Hermes nhất định.</strong> Tên lệnh và vị trí menu có thể đã
+        khác. Nếu trong video có lệnh khác guide này, tin theo <code>hermes &lt;lệnh&gt; --help</code> trên máy anh chị.
+        Đây cũng là lý do các video trên chỉ mang tính tham khảo, không phải nguồn chuẩn.</p>
+      </div>
+
+      <h3 class="sub">Checklist hoàn tất</h3>
+      <table class="d6 tight">
+        <thead><tr><th>#</th><th>Hạng mục</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Nhóm đã là supergroup và <strong>Topics đang bật</strong></td></tr>
+          <tr><td>2</td><td>Đã tạo 4 topic: General, Nghiên cứu, Viết nội dung, Vận hành</td></tr>
+          <tr><td>3</td><td>Bot đã vào nhóm, đã lưu quyền admin</td></tr>
+          <tr><td>4</td><td>Bot đã <strong>Disable Group Privacy</strong></td></tr>
+          <tr><td>5</td><td>Đã có 3 profile: <code>research</code>, <code>writer</code>, <code>ops</code></td></tr>
+          <tr><td>6</td><td>Mỗi profile đã nối model provider và có SOUL riêng</td></tr>
+          <tr><td>7</td><td><code>multiplex_profiles: true</code> nằm ở <strong>profile mặc định</strong></td></tr>
+          <tr><td>8</td><td><code>profile_routes</code> dùng đúng <code>chat_id</code> và <code>thread_id</code> thật</td></tr>
+          <tr><td>9</td><td>Bài kiểm tra cách ly 4 bước ở Bước 10 đã đạt</td></tr>
+          <tr><td>10</td><td>Không có profile phụ nào tự chạy gateway riêng</td></tr>
+        </tbody>
+      </table>
+
+      <footer class="doc-foot">
+        The1ight · Mobile Agent · Hướng dẫn học viên — 1 bot Telegram, nhiều profile Hermes theo từng topic.<br>
+        Số liệu ID trong bài là ví dụ. Luôn đối chiếu với nhóm thật của anh chị trước khi dùng.
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Wrap wide tables so they scroll inside their own box instead of
+  // pushing the whole page sideways on narrow screens.
+  document.querySelectorAll('table.d6').forEach(t => {
+    if (t.parentElement && t.parentElement.classList.contains('tw')) return;
+    const w = document.createElement('div');
+    w.className = 'tw';
+    t.parentNode.insertBefore(w, t);
+    w.appendChild(t);
+  });
+
+  document.querySelectorAll('button.copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const el = document.getElementById(btn.getAttribute('data-target'));
+      if (!el) return;
+      try {
+        await navigator.clipboard.writeText(el.innerText);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied'; btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+      } catch (e) { btn.textContent = 'Copy failed'; }
+    });
+  });
+</script>
+</body>
+</html>
