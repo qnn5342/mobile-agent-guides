@@ -542,8 +542,90 @@ hermes -p ops model
         máy cá nhân rồi nhập code. Không dán mật khẩu hoặc token vào Terminal.</p>
       </div>
 
-      <p>Mỗi profile giữ phiên đăng nhập riêng trong <code>~/.hermes/profiles/&lt;profile&gt;/auth.json</code>.
-      Không cần copy file, không cần link, không cần chỉnh tay gì thêm.</p>
+      <h3 class="sub">8a-bis. Kiểm tra profile nào thật sự có phiên riêng</h3>
+      <p><strong>Đừng tin <code>auth status</code>.</strong> Nếu một profile chưa có credential cục bộ cho provider đó,
+      Hermes sẽ <em>mượn</em> phiên từ profile gốc và vẫn báo <code>logged in</code>. Vì vậy ba profile có thể cùng
+      báo <code>logged in</code> trong khi thật ra chỉ có <em>một</em> phiên.</p>
+
+      <table class="d6 tight">
+        <thead><tr><th>Trạng thái</th><th>Nghĩa là</th><th>Nên làm</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Có phiên riêng</strong></td><td>Profile tự có phiên OAuth của mình</td><td>Đúng như mong muốn</td></tr>
+          <tr><td><strong>Đang mượn phiên</strong></td><td>Profile không có credential cục bộ, đang đọc từ profile gốc</td><td>Chạy lại <code>hermes -p &lt;profile&gt; model</code> để tạo phiên riêng</td></tr>
+          <tr><td><strong>Bản sao token gốc</strong></td><td>Profile giữ bản copy của <em>cùng</em> refresh token</td><td>Đăng nhập lại để có phiên riêng, tránh xung đột</td></tr>
+        </tbody>
+      </table>
+
+      <p>Chạy script này trên máy đang cài Hermes để biết từng profile đang ở trạng thái nào:</p>
+      <div class="code-wrap">
+        <pre class="code" id="c7-check">python3 - &lt;&lt;'PY'
+import json, pathlib, hashlib, base64, time
+
+
+def _jwt_exp(token):
+    try:
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload)).get("exp")
+    except Exception:
+        return None
+
+
+def inspect(profile_home):
+    auth_file = profile_home / "auth.json"
+    if not auth_file.exists():
+        return {"state": "no_file"}
+    try:
+        data = json.loads(auth_file.read_text())
+    except Exception:
+        return {"state": "unreadable"}
+    pool = (data.get("credential_pool") or {}).get("openai-codex") or []
+    prov = (data.get("providers") or {}).get("openai-codex") or {}
+    entry = pool[0] if pool and isinstance(pool[0], dict) else {}
+    refresh = entry.get("refresh_token") or (prov.get("tokens") or {}).get("refresh_token")
+    access = entry.get("access_token") or (prov.get("tokens") or {}).get("access_token")
+    if not refresh:
+        return {"state": "no_entry"}
+    exp = _jwt_exp(access) if access else None
+    token_state = ("không đọc được hạn" if exp is None
+                   else "access token ĐÃ HẾT HẠN" if exp &lt; time.time()
+                   else "access token còn hiệu lực")
+    return {"state": "entry",
+            "fp": hashlib.sha256(str(refresh).encode()).hexdigest()[:12],
+            "token_state": token_state}
+
+
+home = pathlib.Path.home() / ".hermes"
+root = inspect(home)
+print("profile gốc       :", root.get("fp") or "chưa có token", "|", root.get("token_state", ""))
+
+profiles_dir = home / "profiles"
+if profiles_dir.is_dir():
+    for profile in sorted(p for p in profiles_dir.iterdir() if p.is_dir()):
+        info = inspect(profile)
+        if info["state"] in ("no_entry", "no_file"):
+            state = "ĐANG MƯỢN phiên từ profile gốc"
+        elif info["state"] == "unreadable":
+            state = "auth.json đọc lỗi"
+        elif info["fp"] == root.get("fp"):
+            state = "BẢN SAO token profile gốc"
+        else:
+            state = "có phiên riêng"
+        print(f"{profile.name:&lt;18}: {state:&lt;34} | {info.get('token_state','')}")
+PY</pre>
+        <button class="copy" data-target="c7-check">Copy</button>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Vì sao phải kiểm tra:</strong> nếu nhiều profile cùng giữ bản sao của <em>một</em> refresh token,
+          profile nào refresh trước sẽ xoay token và làm các profile còn lại bị 401. Đây là nguyên nhân của lỗi
+          kiểu “profile thứ hai làm profile thứ nhất mất quyền”.</p>
+          <p>Script chỉ so với token <em>hiện tại</em> của profile gốc, nên một entry “có phiên riêng” vẫn có thể là
+          bản sao cũ. Cột hạn của access token giúp phát hiện: hết hạn mà không tự refresh được thì phải đăng nhập lại.</p>
+        </div>
+      </div>
 
       <div class="callout ok">
         <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
@@ -552,7 +634,7 @@ hermes -p ops model
           <p><code>hermes -p research -z "Reply exactly: OK"</code><br>
           <code>hermes -p writer -z "Reply exactly: OK"</code><br>
           <code>hermes -p ops -z "Reply exactly: OK"</code></p>
-          <p>Cả ba phải trả về <code>OK</code>.</p>
+          <p>Cả ba phải trả về <code>OK</code>. Lúc mới setup, chạy lần lượt thay vì bắn cả ba cùng lúc.</p>
         </div>
       </div>
 
@@ -740,6 +822,16 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
             <td>Đăng nhập lại cho riêng profile đó: <code>hermes -p &lt;profile&gt; model</code> → chọn lại ChatGPT or Codex Subscription. Các profile khác không bị ảnh hưởng.</td>
           </tr>
           <tr>
+            <td><code>auth status</code> báo cả ba <code>logged in</code> nhưng thực ra chỉ có một phiên</td>
+            <td>Profile chưa có credential cục bộ nên Hermes mượn phiên từ profile gốc</td>
+            <td>Chạy script ở Bước 08a-bis để xem profile nào đang mượn, rồi chạy <code>hermes -p &lt;profile&gt; model</code> cho đúng profile đó.</td>
+          </tr>
+          <tr>
+            <td>Đăng nhập profile thứ hai xong thì profile thứ nhất bị mất quyền</td>
+            <td>Nhiều profile giữ bản sao của cùng một refresh token và xoay vòng lẫn nhau</td>
+            <td>Đăng nhập lại để mỗi profile có phiên riêng, hoặc dùng tài khoản riêng cho từng profile. Kiểm tra lại bằng script ở Bước 08a-bis.</td>
+          </tr>
+          <tr>
             <td>Bật Topics rồi nhưng bot vẫn không thấy gì</td>
             <td>Bot chưa được lưu quyền admin, hoặc chưa được thêm lại sau khi đổi cài đặt</td>
             <td>Kiểm tra <strong>Save Changes</strong>, và xác nhận bot còn trong nhóm.</td>
@@ -810,7 +902,7 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
           <tr><td>3</td><td>Bot đã vào nhóm, đã lưu quyền admin</td></tr>
           <tr><td>4</td><td>Bot đã <strong>Disable Group Privacy</strong></td></tr>
           <tr><td>5</td><td>Đã có 3 profile: <code>research</code>, <code>writer</code>, <code>ops</code></td></tr>
-          <tr><td>6</td><td>Mỗi profile đã đăng nhập ChatGPT/Codex và inference test trả về <code>OK</code></td></tr>
+          <tr><td>6</td><td>Mỗi profile có phiên OAuth riêng (script Bước 08a-bis báo “có phiên riêng”) và inference test trả về <code>OK</code></td></tr>
           <tr><td>7</td><td><code>multiplex_profiles: true</code> nằm ở <strong>profile mặc định</strong></td></tr>
           <tr><td>8</td><td><code>profile_routes</code> dùng đúng <code>chat_id</code> và <code>thread_id</code> thật</td></tr>
           <tr><td>9</td><td>Bài kiểm tra cách ly 4 bước ở Bước 10 đã đạt</td></tr>
