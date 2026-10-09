@@ -101,8 +101,11 @@
   table.d6 code { background: rgba(14, 38, 56, 0.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
   table.d6.tight th:first-child { width: 30%; }
 
-  /* Code blocks + copy button */
-  .code-wrap { position: relative; margin: 14px 0; }
+  /* Code blocks + copy button.
+     The copy button used to be absolutely positioned over the <pre>, which covered
+     the first lines of code on narrow screens. It now sits in its own row above the
+     block (flex + order), so it can never overlap the code. */
+  .code-wrap { position: relative; margin: 14px 0; display: flex; flex-direction: column; }
   pre.code {
     background: var(--code-bg); color: var(--cream);
     padding: 16px 18px; border-radius: 8px;
@@ -111,7 +114,7 @@
   pre.code .cmt { color: #7fa3ab; }
   pre.code .var { color: var(--orange); }
   button.copy {
-    position: absolute; top: 8px; right: 8px;
+    order: -1; position: static; align-self: flex-end; margin: 0 0 6px;
     background: rgba(255,255,255,0.08); color: var(--cream);
     border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
     padding: 4px 10px; font-size: 11px; cursor: pointer;
@@ -169,11 +172,35 @@
   .flow .node .d { font-size: 12.5px; color: var(--green2); margin-top: 4px; }
   .flow .arrow { display: flex; align-items: center; color: var(--green1); font-weight: 700; font-size: 20px; flex: 0 0 auto; }
   .flow .flow-sep { display: flex; justify-content: center; color: var(--green1); font-weight: 700; font-size: 18px; line-height: 1; margin: -4px 0; }
-  @media (max-width: 560px) {
-    .flow-row { flex-direction: column; }
+  /* ── Mobile / narrow screens ──────────────────────────────────────────────
+     Three narrow-screen fixes, each verified by measurement:
+     1. Flow diagram: the arrow was rotated 90° while the row still stretched its
+        items, so the rotated arrow's box grew over the neighbouring cards.
+        Swap the glyph for a real "down" arrow at font-size:0 instead — no
+        transform means no oversized box.
+     2. Code blocks: long lines forced horizontal dragging on every block.
+        pre-wrap keeps the real newlines (so the copied text is unchanged) and
+        wraps the long ones.
+     3. Tables: a fixed 30% first column pushed three tables wider than their
+        scroll container. Let the columns size themselves instead. */
+  @media (max-width: 640px) {
+    .flow-row { flex-direction: column; align-items: stretch; gap: 6px; }
     .flow .node { min-width: 0; width: 100%; }
-    .flow .arrow { transform: rotate(90deg); justify-content: center; }
+    .flow .arrow {
+      flex: 0 0 auto; align-self: center; transform: none;
+      font-size: 0; line-height: 1; padding: 2px 0;
+    }
+    .flow .arrow::before { content: "\2193"; font-size: 20px; color: var(--green1); }
     .flow .flow-sep { display: none; }
+
+    pre.code {
+      white-space: pre-wrap; overflow-wrap: anywhere;
+      font-size: 12.5px; padding: 14px 14px;
+    }
+
+    table.d6 { font-size: 13px; }
+    table.d6 th, table.d6 td { padding: 8px 9px; }
+    table.d6.tight th:first-child { width: auto; }
   }
 
   /* Footer */
@@ -935,7 +962,10 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
       const el = document.getElementById(btn.getAttribute('data-target'));
       if (!el) return;
       try {
-        await navigator.clipboard.writeText(el.innerText);
+        // textContent (not innerText): on narrow screens long lines soft-wrap, and
+        // innerText would mirror those visual wraps into the copied text. textContent
+        // returns the real source text, so the copied block stays runnable.
+        await navigator.clipboard.writeText(el.textContent);
         const orig = btn.textContent;
         btn.textContent = 'Copied'; btn.classList.add('copied');
         setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
