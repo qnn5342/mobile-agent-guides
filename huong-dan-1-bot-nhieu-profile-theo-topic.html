@@ -287,7 +287,7 @@
         <div class="flow-row">
           <div class="node"><div class="k">Bước 4</div><div class="v">profile_routes</div><div class="d">Tra bảng: <code>chat_id</code> + <code>thread_id</code> này thuộc profile nào.</div></div>
           <div class="arrow">→</div>
-          <div class="node"><div class="k">Bước 5</div><div class="v">Profile trả lời</div><div class="d">Dùng memory, SOUL, skill và model riêng; tất cả phòng dùng chung một kho OAuth có shared lock.</div></div>
+          <div class="node"><div class="k">Bước 5</div><div class="v">Profile trả lời</div><div class="d">Dùng memory, SOUL, skill, model và phiên đăng nhập của riêng phòng đó.</div></div>
         </div>
       </div>
 
@@ -332,7 +332,7 @@
           <tr><td><strong>Hermes trên VPS</strong></td><td>Lệnh <code>hermes</code> chạy được; gateway sống</td><td><code>hermes gateway status</code></td></tr>
           <tr><td><strong>Telegram</strong></td><td>App trên điện thoại <em>và</em> Telegram Desktop hoặc Web</td><td>Desktop/Web dùng để copy link lấy ID (Bước 06)</td></tr>
           <tr><td><strong>Quyền admin nhóm</strong></td><td>Có quyền sửa cài đặt nhóm + thêm bot</td><td>vào Group Settings xem sửa được không</td></tr>
-          <tr><td><strong>Tài khoản ChatGPT/Codex</strong></td><td>Một tài khoản có quyền dùng Codex</td><td>Sẽ OAuth một lần rồi chia sẻ an toàn cho các profile</td></tr>
+          <tr><td><strong>Tài khoản ChatGPT/Codex</strong></td><td>Một tài khoản có quyền dùng Codex</td><td>Sẽ đăng nhập OAuth cho từng profile ở Bước 08</td></tr>
         </tbody>
       </table>
 
@@ -484,7 +484,7 @@ https://t.me/c/<span class="var">1234567890</span>/<span class="var">5</span>
       </h2>
 
       <p>SSH vào VPS rồi tạo profile. Một profile là một "nhân viên" trọn vẹn: memory riêng, SOUL riêng,
-      skill riêng, model/config riêng và thư mục riêng. Các phòng dùng chung một kho OAuth nhưng không dùng chung memory hay SOUL.</p>
+      skill riêng, model riêng, phiên đăng nhập riêng và thư mục riêng.</p>
 
       <div class="code-wrap">
         <pre class="code" id="c5">hermes profile create research --description "Nghiên cứu, đọc tài liệu, tổng hợp nguồn"
@@ -523,63 +523,36 @@ hermes profile list   <span class="cmt"># phải thấy đủ 3 profile mới</s
         Nối model và đặt vai cho từng profile
       </h2>
 
-      <h3 class="sub">8a. OAuth một lần, dùng chung an toàn cho nhiều profile</h3>
-      <p>Đăng nhập ChatGPT/Codex đúng một lần ở profile mặc định. Sau đó cho các profile phòng ban cùng trỏ tới
-      <code>~/.hermes/auth.json</code> và <code>~/.hermes/auth.lock</code>. File lock dùng chung là phần bắt buộc:
-      nó ngăn hai profile xoay refresh token cùng lúc.</p>
+      <h3 class="sub">8a. Nối model provider cho từng profile</h3>
+      <p>Chạy model picker cho từng profile và chọn <strong>ChatGPT or Codex Subscription</strong>. Hermes sẽ mở
+      link đăng nhập hoặc đưa device code để anh chị đăng nhập bằng tài khoản ChatGPT. Làm lần lượt cho cả ba profile.</p>
 
       <div class="code-wrap">
-        <pre class="code" id="c7">hermes auth add openai-codex
-hermes auth status openai-codex   <span class="cmt"># phải báo: logged in</span></pre>
-        <button class="copy" data-target="c7">Copy</button>
-      </div>
-
-      <p>Tạo backup credential cục bộ, rồi nối cả ba profile về kho OAuth chung:</p>
-      <div class="code-wrap">
-        <pre class="code" id="c7-share">STAMP=$(date +%Y%m%d-%H%M%S)
-touch ~/.hermes/auth.lock
-chmod 600 ~/.hermes/auth.json ~/.hermes/auth.lock
-
-for PROFILE in research writer ops; do
-  HOME_DIR="$HOME/.hermes/profiles/$PROFILE"
-  if [ -e "$HOME_DIR/auth.json" ] &amp;&amp; [ ! -L "$HOME_DIR/auth.json" ]; then
-    cp -p "$HOME_DIR/auth.json" "$HOME_DIR/auth.json.backup-$STAMP"
-  fi
-  rm -f "$HOME_DIR/auth.json" "$HOME_DIR/auth.lock"
-  ln -s ../../auth.json "$HOME_DIR/auth.json"
-  ln -s ../../auth.lock "$HOME_DIR/auth.lock"
-done</pre>
-        <button class="copy" data-target="c7-share">Copy</button>
-      </div>
-
-      <div class="callout warn">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
-        <div>
-          <p><strong>Chỉ dùng cách này cho các profile của cùng một chủ sở hữu.</strong> Các profile sẽ dùng chung quyền truy cập model.
-          Không áp dụng cho bot của khách hàng, học viên khác nhau hoặc môi trường multi-tenant.</p>
-          <p>Phải link <strong>cả <code>auth.json</code> và <code>auth.lock</code></strong>. Chỉ copy/link token mà không dùng chung lock
-          sẽ đưa lỗi refresh-token rotation quay lại.</p>
-        </div>
-      </div>
-
-      <p>Cuối cùng, chọn ChatGPT/Codex model cho từng phòng. Lúc này không OAuth lại:</p>
-      <div class="code-wrap">
-        <pre class="code" id="c7-models">hermes -p research model
+        <pre class="code" id="c7">hermes -p research model
 hermes -p writer model
 hermes -p ops model
 
-<span class="cmt"># Trong menu: chọn ChatGPT or Codex Subscription và model muốn dùng</span></pre>
-        <button class="copy" data-target="c7-models">Copy</button>
+<span class="cmt"># Trong menu: chọn "ChatGPT or Codex Subscription" → đăng nhập OAuth</span></pre>
+        <button class="copy" data-target="c7">Copy</button>
       </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p><strong>Đang SSH vào VPS?</strong> Với device code, copy đường link hiện trong Terminal, mở trên trình duyệt
+        máy cá nhân rồi nhập code. Không dán mật khẩu hoặc token vào Terminal.</p>
+      </div>
+
+      <p>Mỗi profile giữ phiên đăng nhập riêng trong <code>~/.hermes/profiles/&lt;profile&gt;/auth.json</code>.
+      Không cần copy file, không cần link, không cần chỉnh tay gì thêm.</p>
 
       <div class="callout ok">
         <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
         <div>
-          <p><strong>Kiểm tra thật:</strong></p>
+          <p><strong>Kiểm tra:</strong></p>
           <p><code>hermes -p research -z "Reply exactly: OK"</code><br>
           <code>hermes -p writer -z "Reply exactly: OK"</code><br>
           <code>hermes -p ops -z "Reply exactly: OK"</code></p>
-          <p>Cả ba phải trả về <code>OK</code>. Kiểm tra inference thật đáng tin hơn chỉ nhìn <code>auth status</code>.</p>
+          <p>Cả ba phải trả về <code>OK</code>.</p>
         </div>
       </div>
 
@@ -762,9 +735,9 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
             <td>Thoát wizard, chạy lại <code>hermes -p &lt;profile&gt; model</code> và chọn <strong>ChatGPT or Codex Subscription</strong>.</td>
           </tr>
           <tr>
-            <td>OAuth profile thứ hai làm profile thứ nhất mất quyền sau một thời gian</td>
-            <td>Mỗi profile đang giữ một bản token riêng, hoặc chỉ link <code>auth.json</code> mà chưa link shared lock</td>
-            <td>Quay lại Bước 08: backup rồi link cả <code>auth.json</code> và <code>auth.lock</code> về profile mặc định.</td>
+            <td>Một profile đột nhiên báo lỗi đăng nhập hoặc 401</td>
+            <td>Phiên OAuth của profile đó bị xoay vòng ở nơi khác (Codex CLI, VS Code) hoặc hết hiệu lực</td>
+            <td>Đăng nhập lại cho riêng profile đó: <code>hermes -p &lt;profile&gt; model</code> → chọn lại ChatGPT or Codex Subscription. Các profile khác không bị ảnh hưởng.</td>
           </tr>
           <tr>
             <td>Bật Topics rồi nhưng bot vẫn không thấy gì</td>
@@ -837,7 +810,7 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
           <tr><td>3</td><td>Bot đã vào nhóm, đã lưu quyền admin</td></tr>
           <tr><td>4</td><td>Bot đã <strong>Disable Group Privacy</strong></td></tr>
           <tr><td>5</td><td>Đã có 3 profile: <code>research</code>, <code>writer</code>, <code>ops</code></td></tr>
-          <tr><td>6</td><td>Ba profile cùng dùng canonical <code>auth.json</code> + <code>auth.lock</code>, inference test đều trả về <code>OK</code></td></tr>
+          <tr><td>6</td><td>Mỗi profile đã đăng nhập ChatGPT/Codex và inference test trả về <code>OK</code></td></tr>
           <tr><td>7</td><td><code>multiplex_profiles: true</code> nằm ở <strong>profile mặc định</strong></td></tr>
           <tr><td>8</td><td><code>profile_routes</code> dùng đúng <code>chat_id</code> và <code>thread_id</code> thật</td></tr>
           <tr><td>9</td><td>Bài kiểm tra cách ly 4 bước ở Bước 10 đã đạt</td></tr>
