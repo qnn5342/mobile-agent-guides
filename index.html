@@ -28,31 +28,81 @@
     line-height: 1.55;
   }
   code, pre, .kbd { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
-  .container { max-width: 1180px; margin: 0 auto; padding: 24px; }
-  .grid-layout { display: grid; grid-template-columns: 262px minmax(0, 1fr); gap: 32px; align-items: start; }
-  @media (max-width: 900px) { .grid-layout { grid-template-columns: minmax(0, 1fr); } }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; }
 
-  /* Left rail nav */
+  /* Single reading column. A 2-column shell put the TOC beside the text on wide
+     screens and above it on narrow ones — either way it competed with reading. */
+  .grid-layout { display: block; }
+
+  /* ── Table of contents ────────────────────────────────────────────────────
+     A compact sticky control instead of a full-height rail:
+       · collapsed by default — only one 46px row is ever in the reading path
+       · taps open the list as an OVERLAY (absolute), so expanding never pushes
+         the article down and never costs the reader their scroll position
+       · slides away while the reader scrolls down, returns on the first
+         upward scroll — so it cannot sit over the text being read
+       · closes itself on scroll, on Esc, on outside tap, and after a jump   */
   nav.rail {
-    position: sticky; top: 24px;
-    background: rgba(30, 96, 110, 0.05);
+    position: sticky; top: 10px; z-index: 30;
+    background: var(--cream);
+    border: 1px solid rgba(30, 96, 110, 0.3);
     border-left: 3px solid var(--green1);
-    padding: 18px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
+    margin: 0 0 24px; padding: 0;
     font-size: 14px;
-    max-height: calc(100vh - 48px); overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(14, 38, 56, 0.10);
+    transition: transform 0.22s ease, opacity 0.22s ease;
   }
-  nav.rail h2 {
-    font-weight: 700; color: var(--green2); font-size: 13px;
-    text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 12px;
+  nav.rail.is-hidden { transform: translateY(-135%); opacity: 0; pointer-events: none; }
+
+  nav.rail .rail-toggle {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: none; border: 0; cursor: pointer;
+    padding: 13px 16px; text-align: left;
+    font-family: inherit; font-weight: 700; color: var(--green2);
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;
   }
+  nav.rail .rail-toggle:hover { color: var(--orange); }
+  nav.rail .rail-toggle:focus-visible { outline: 2px solid var(--green1); outline-offset: -3px; border-radius: 6px; }
+  nav.rail .rail-toggle .count {
+    margin-left: auto; font-size: 12px; font-weight: 700;
+    letter-spacing: 0; text-transform: none; color: var(--green1);
+  }
+  nav.rail .rail-chev {
+    width: 9px; height: 9px; flex: 0 0 auto; margin-top: -3px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(45deg); transition: transform 0.2s ease;
+  }
+  nav.rail.is-open .rail-chev { transform: rotate(-135deg); margin-top: 3px; }
+
+  nav.rail .rail-body {
+    display: none;
+    position: absolute; left: -3px; right: -1px; top: 100%;
+    background: var(--cream);
+    border: 1px solid rgba(30, 96, 110, 0.3); border-top: 0;
+    border-radius: 0 0 8px 8px;
+    padding: 4px 16px 14px;
+    max-height: min(62vh, 460px); overflow-y: auto;
+    box-shadow: 0 14px 24px rgba(14, 38, 56, 0.14);
+  }
+  nav.rail.is-open .rail-body { display: block; }
+
   nav.rail ol { list-style: none; padding: 0; margin: 0; counter-reset: item; }
-  nav.rail li { padding: 6px 0; counter-increment: item; }
+  nav.rail li { padding: 7px 0; counter-increment: item; border-top: 1px solid rgba(14, 38, 56, 0.08); }
+  nav.rail li:first-child { border-top: 0; }
   nav.rail a { color: var(--navy); text-decoration: none; display: flex; gap: 8px; align-items: baseline; }
   nav.rail a:hover { color: var(--orange); }
   nav.rail a::before {
     content: counter(item, decimal-leading-zero);
     color: var(--green1); font-weight: 700; font-size: 12px; min-width: 24px;
+  }
+
+  /* Jump targets clear the sticky TOC bar instead of hiding under it. */
+  h2.section { scroll-margin-top: 76px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    nav.rail { transition: none; }
+    nav.rail .rail-chev { transition: none; }
   }
 
   /* Headings */
@@ -208,7 +258,7 @@
 
   @media print {
     nav.rail { display: none; }
-    .grid-layout { grid-template-columns: 1fr; }
+    .grid-layout { display: block; }
     button.copy { display: none; }
   }
 </style>
@@ -246,8 +296,14 @@
 
   <div class="grid-layout">
 
-    <nav class="rail" aria-label="Mục lục">
-      <h2>Nội dung</h2>
+    <nav class="rail" id="toc" aria-label="Mục lục">
+      <button class="rail-toggle" id="toc-toggle" type="button" aria-expanded="false" aria-controls="toc-body">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+        Mục lục
+        <span class="count">12 mục</span>
+        <span class="rail-chev" aria-hidden="true"></span>
+      </button>
+      <div class="rail-body" id="toc-body">
       <ol>
         <li><a href="#result">Kết quả cuối cùng</a></li>
         <li><a href="#model">Hiểu đúng mô hình</a></li>
@@ -262,6 +318,7 @@
         <li><a href="#trouble">Sự cố thường gặp</a></li>
         <li><a href="#video">Video tham khảo</a></li>
       </ol>
+      </div>
     </nav>
 
     <main>
@@ -972,6 +1029,80 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
       } catch (e) { btn.textContent = 'Copy failed'; }
     });
   });
+
+  /* ── Collapsible table of contents ───────────────────────────────────────
+     Collapsed by default. Opens as an overlay (no layout shift, the reader
+     keeps their place), and closes itself the moment the reader moves on.
+     While scrolling down the closed bar slides out of the way entirely, so it
+     never covers the text; the first upward scroll brings it back. */
+  (function () {
+    const nav = document.getElementById('toc');
+    const toggle = document.getElementById('toc-toggle');
+    if (!nav || !toggle) return;
+
+    const SCROLL_AWAY = 140;   // don't hide the bar above this offset
+    const SETTLE = 48;         // movement that counts as "the reader moved on"
+    let openedAt = 0;
+    let lastY = window.scrollY;
+    let lastRun = 0;
+
+    function setOpen(open) {
+      nav.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) openedAt = window.scrollY;
+    }
+    function isOpen() { return nav.classList.contains('is-open'); }
+
+    toggle.addEventListener('click', function () { setOpen(!isOpen()); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isOpen()) { setOpen(false); toggle.focus(); }
+    });
+
+    // Outside tap closes it (a tap on the toggle is inside nav, so it survives).
+    document.addEventListener('click', function (e) {
+      if (isOpen() && !nav.contains(e.target)) setOpen(false);
+    });
+
+    // Choosing a section closes the menu and lets the jump land below the bar.
+    nav.querySelectorAll('.rail-body a').forEach(function (link) {
+      link.addEventListener('click', function () { setOpen(false); });
+    });
+
+    function onScroll() {
+      const y = window.scrollY;
+      const delta = y - lastY;
+
+      // Moving the page closes an open panel first — the reader asked to read on.
+      if (isOpen() && Math.abs(y - openedAt) > SETTLE) setOpen(false);
+
+      // Still open means the reader is looking at the menu, not the article.
+      if (isOpen()) {
+        nav.classList.remove('is-hidden');
+        lastY = y;
+        return;
+      }
+
+      // Closed: slide out of the way while travelling down, come back on the
+      // first upward movement. Deliberately evaluated even on the same scroll
+      // that just closed the panel, so a single downward fling clears the screen.
+      if (y > SCROLL_AWAY && delta > 4) nav.classList.add('is-hidden');
+      else if (delta < -4 || y <= SCROLL_AWAY) nav.classList.remove('is-hidden');
+      lastY = y;
+    }
+
+    // Runs directly on scroll, throttled by timestamp rather than via
+    // requestAnimationFrame: rAF is throttled in background tabs and
+    // offscreen frames, which would leave the menu stuck on screen there.
+    function onScrollThrottled() {
+      const now = Date.now();
+      if (now - lastRun < 16) return;
+      lastRun = now;
+      onScroll();
+    }
+    window.addEventListener('scroll', onScrollThrottled, { passive: true });
+    document.addEventListener('scroll', onScrollThrottled, { passive: true });
+  })();
 </script>
 </body>
 </html>
