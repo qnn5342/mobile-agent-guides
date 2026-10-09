@@ -287,7 +287,7 @@
         <div class="flow-row">
           <div class="node"><div class="k">Bước 4</div><div class="v">profile_routes</div><div class="d">Tra bảng: <code>chat_id</code> + <code>thread_id</code> này thuộc profile nào.</div></div>
           <div class="arrow">→</div>
-          <div class="node"><div class="k">Bước 5</div><div class="v">Profile trả lời</div><div class="d">Dùng memory, SOUL, skill và model riêng; credential có thể dùng chung an toàn từ profile mặc định.</div></div>
+          <div class="node"><div class="k">Bước 5</div><div class="v">Profile trả lời</div><div class="d">Dùng memory, SOUL, skill và model của phòng đó; cách cấp credential chọn riêng ở Bước 08.</div></div>
         </div>
       </div>
 
@@ -297,7 +297,7 @@
         <tbody>
           <tr><td>Số bot phải quản</td><td><strong>1</strong> token, 1 chỗ dán</td><td>N bot, N lần tạo với BotFather</td></tr>
           <tr><td>Thêm phòng mới</td><td>Sửa 5 dòng YAML</td><td>Tạo bot mới, thêm vào group, cấp quyền lại</td></tr>
-          <tr><td>Cách ly giữa các vai</td><td>Có — memory/SOUL/config riêng; OAuth có thể dùng global fallback</td><td>Có — tách ở mức tiến trình</td></tr>
+          <tr><td>Cách ly giữa các vai</td><td>Có — mỗi profile có memory/SOUL/config riêng</td><td>Có — tách ở mức tiến trình</td></tr>
           <tr><td>Cần chạy bao nhiêu tiến trình</td><td>1 gateway</td><td>N gateway</td></tr>
         </tbody>
       </table>
@@ -484,7 +484,7 @@ https://t.me/c/<span class="var">1234567890</span>/<span class="var">5</span>
       </h2>
 
       <p>SSH vào VPS rồi tạo profile. Một profile là một "nhân viên" trọn vẹn: memory riêng, SOUL riêng,
-      skill riêng, model/config riêng và thư mục riêng. Credential OAuth có thể dùng chung từ profile mặc định.</p>
+      skill riêng, model/config riêng và thư mục riêng. Các phòng vẫn chạy song song dù chọn OAuth hay API key.</p>
 
       <div class="code-wrap">
         <pre class="code" id="c5">hermes profile create research --description "Nghiên cứu, đọc tài liệu, tổng hợp nguồn"
@@ -523,64 +523,60 @@ hermes profile list   <span class="cmt"># phải thấy đủ 3 profile mới</s
         Nối model và đặt vai cho từng profile
       </h2>
 
-      <h3 class="sub">8a. Nối model provider bằng OAuth</h3>
-      <p>Nếu anh chị dùng gói ChatGPT/Codex hoặc Nous Portal, <strong>không cần nhập API key</strong>.
-      Quan trọng: <strong>chỉ đăng nhập OAuth một lần ở profile mặc định</strong>. Các profile con chưa có credential cục bộ
-      sẽ tự dùng credential ở <code>~/.hermes/auth.json</code> qua cơ chế global-auth fallback.</p>
+      <h3 class="sub">8a. Chọn cách cấp model cho các phòng chạy song song</h3>
+      <p>Profile và credential là hai lớp khác nhau. Anh chị vẫn tạo đủ <code>research</code>, <code>writer</code>, <code>ops</code>;
+      chỉ cần chọn cách cấp model phù hợp với tài khoản đang có.</p>
 
-      <h3 class="sub">Cách 1 — ChatGPT hoặc Codex Subscription</h3>
-      <p>Đăng nhập OAuth một lần, không thêm <code>-p</code>. Trong menu, chọn <strong>ChatGPT or Codex Subscription</strong>,
-      mở đường link Hermes đưa ra và nhập device code. Không chọn <strong>OpenAI API</strong>, vì lựa chọn đó mới yêu cầu API key.</p>
+      <table class="d6">
+        <thead><tr><th>Cách cấp model</th><th>Khi nên dùng</th><th>Lưu ý</th></tr></thead>
+        <tbody>
+          <tr><td><strong>API key</strong></td><td>Nhiều phòng cần hoạt động đồng thời, ổn định</td><td>Có thể dùng cùng một key cho các profile; mỗi profile vẫn tách memory/SOUL.</td></tr>
+          <tr><td><strong>Nous Portal OAuth</strong></td><td>Muốn OAuth/subscription và dùng nhiều profile</td><td>Đăng nhập một lần ở profile mặc định, sau đó chọn Nous/model cho từng profile.</td></tr>
+          <tr><td><strong>ChatGPT/Codex OAuth</strong></td><td>Một profile, hoặc mỗi profile dùng một tài khoản ChatGPT riêng</td><td>Một tài khoản dùng cho nhiều profile đồng thời có thể gặp xung đột refresh token.</td></tr>
+        </tbody>
+      </table>
 
+      <h3 class="sub">Cách 1 — API key cho nhiều phòng song song <span class="badge accent">ổn định nhất</span></h3>
+      <p>Chạy model picker cho từng profile, chọn OpenRouter, OpenAI API, Gemini, DeepSeek hoặc provider dùng key khác.
+      Có thể nhập cùng một API key vào cả ba profile.</p>
       <div class="code-wrap">
-        <pre class="code" id="c7">hermes auth add openai-codex   <span class="cmt"># đăng nhập OAuth MỘT lần ở profile mặc định</span>
-
-<span class="cmt"># Sau đó chỉ chọn provider/model cho từng profile — không OAuth lại:</span>
-hermes -p research model
+        <pre class="code" id="c7">hermes -p research model
 hermes -p writer model
-hermes -p ops model
-
-<span class="cmt"># Trong mỗi lần chạy: chọn "ChatGPT or Codex Subscription" đã đăng nhập</span></pre>
+hermes -p ops model</pre>
         <button class="copy" data-target="c7">Copy</button>
       </div>
 
-      <h3 class="sub">Cách 2 — Nous Portal</h3>
-      <p>Nous Portal cũng chỉ cần đăng nhập một lần ở profile mặc định, rồi chọn Nous/model cho từng profile con.</p>
+      <h3 class="sub">Cách 2 — Nous Portal OAuth</h3>
       <div class="code-wrap">
-        <pre class="code" id="c7-nous">hermes setup --portal          <span class="cmt"># OAuth MỘT lần ở profile mặc định</span>
+        <pre class="code" id="c7-nous">hermes setup --portal          <span class="cmt"># OAuth một lần ở profile mặc định</span>
 
-hermes -p research model       <span class="cmt"># chỉ chọn Nous/model, không đăng nhập lại</span>
+hermes -p research model       <span class="cmt"># chọn Nous và model cho từng phòng</span>
 hermes -p writer model
 hermes -p ops model</pre>
         <button class="copy" data-target="c7-nous">Copy</button>
       </div>
 
+      <h3 class="sub">Cách 3 — ChatGPT hoặc Codex Subscription</h3>
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Không lấy một tài khoản ChatGPT rồi OAuth/copy <code>auth.json</code> vào nhiều profile để chạy đồng thời.</strong>
+          Codex dùng refresh token xoay vòng; profile này refresh có thể làm bản token của profile khác hết hiệu lực.</p>
+          <p>Nếu muốn dùng Codex OAuth cho nhiều phòng: dùng tài khoản ChatGPT riêng cho từng profile.
+          Nếu chỉ có một tài khoản, dùng một profile Codex hoặc chuyển các phòng sang API key/Nous Portal.</p>
+        </div>
+      </div>
+
       <div class="callout info">
         <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
-        <div>
-          <p><strong>Đang SSH vào VPS?</strong> Không sao. Với device-code flow, copy đường link hiện trong Terminal,
-          mở link đó trên trình duyệt máy cá nhân rồi nhập code. Không dán mật khẩu hoặc token vào Terminal.</p>
-          <p><strong>Không copy <code>auth.json</code> sang từng profile và không OAuth lại ba lần.</strong>
-          Refresh token của Codex có thể được xoay vòng; nhiều bản sao token có thể làm nhau hết hiệu lực.</p>
-          <p>Chỉ nhập API key nếu anh chị chủ động chọn provider dùng API key như OpenAI API, Gemini hoặc DeepSeek.</p>
-        </div>
+        <p><strong>Đang SSH vào VPS?</strong> Với OAuth device code, copy đường link hiện trong Terminal,
+        mở trên trình duyệt máy cá nhân rồi nhập code. Không dán mật khẩu hoặc token vào Terminal.</p>
       </div>
 
       <div class="callout ok">
         <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
-        <p><strong>Kiểm tra nhanh:</strong> chạy <code>hermes auth status openai-codex</code>, rồi kiểm tra từng profile bằng
-        <code>hermes -p research auth status openai-codex</code>. Đổi <code>research</code> thành <code>writer</code> và <code>ops</code>;
-        cả ba phải báo <code>logged in</code> mà không yêu cầu OAuth lại.</p>
-      </div>
-
-      <div class="callout warn">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
-        <div>
-          <p><strong>Nếu đã OAuth riêng từng profile:</strong> profile có credential cục bộ sẽ che credential global.
-          Xoá credential cục bộ rồi chọn lại model để profile quay về global fallback:</p>
-          <p><code>hermes -p research logout --provider openai-codex</code> — lặp lại với <code>writer</code> và <code>ops</code>.
-          Sau đó chạy lại ba lệnh <code>hermes -p &lt;profile&gt; model</code> ở trên.</p>
-        </div>
+        <p><strong>Kiểm tra đúng:</strong> không chỉ nhìn <code>auth status</code>. Hãy gửi một câu test trong cả ba topic
+        và xác nhận ba profile đều trả lời được sau khi chạy đồng thời.</p>
       </div>
 
       <h3 class="sub">8b. Viết SOUL — đây mới là thứ làm nên khác biệt</h3>
@@ -764,7 +760,7 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
           <tr>
             <td>OAuth profile thứ hai làm profile thứ nhất mất quyền sau một thời gian</td>
             <td>Đã OAuth riêng hoặc copy cùng refresh token vào nhiều profile; token Codex bị xoay vòng</td>
-            <td>Chỉ giữ một OAuth ở profile mặc định. Logout credential cục bộ của profile con, rồi dùng global-auth fallback như Bước 08.</td>
+            <td>Không tiếp tục đăng nhập lại vòng quanh. Dùng API key/Nous Portal cho các phòng, hoặc dùng tài khoản ChatGPT riêng cho từng profile.</td>
           </tr>
           <tr>
             <td>Bật Topics rồi nhưng bot vẫn không thấy gì</td>
@@ -837,7 +833,7 @@ hermes gateway list      <span class="cmt"># xem profile nào có gateway riêng
           <tr><td>3</td><td>Bot đã vào nhóm, đã lưu quyền admin</td></tr>
           <tr><td>4</td><td>Bot đã <strong>Disable Group Privacy</strong></td></tr>
           <tr><td>5</td><td>Đã có 3 profile: <code>research</code>, <code>writer</code>, <code>ops</code></td></tr>
-          <tr><td>6</td><td>OAuth đăng nhập một lần ở profile mặc định; mỗi profile con đã chọn model và có SOUL riêng</td></tr>
+          <tr><td>6</td><td>Mỗi profile đã có model/credential theo một trong ba cách ở Bước 08 và có SOUL riêng</td></tr>
           <tr><td>7</td><td><code>multiplex_profiles: true</code> nằm ở <strong>profile mặc định</strong></td></tr>
           <tr><td>8</td><td><code>profile_routes</code> dùng đúng <code>chat_id</code> và <code>thread_id</code> thật</td></tr>
           <tr><td>9</td><td>Bài kiểm tra cách ly 4 bước ở Bước 10 đã đạt</td></tr>
