@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Hướng dẫn học viên lớp Mobile Agent: gửi voice note trong Telegram và nhận transcript tiếng Việt miễn phí bằng Whisper chạy local.">
+<title>Nhắn tin với AI bằng giọng nói, miễn phí — hướng dẫn học viên</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:  #f9f3dd;
+    --green1: #1e606e;
+    --green2: #0a4254;
+    --orange: #e9b40f;
+    --navy:   #0e2638;
+    --danger: #b03a2e;
+    --info:   #1e606e;
+    --ok:     #196b3c;
+    --code-bg:#0e2638;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--cream); color: var(--navy);
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif; font-weight: 400;
+    line-height: 1.55;
+  }
+  code, pre, .kbd { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+  /* Single reading column. A 2-column shell put the TOC beside the text on wide
+     screens and above it on narrow ones — either way it competed with reading. */
+  .grid-layout { display: block; }
+
+  /* ── Table of contents ────────────────────────────────────────────────────
+     A compact sticky control instead of a full-height rail:
+       · collapsed by default — only one 46px row is ever in the reading path
+       · taps open the list as an OVERLAY (absolute), so expanding never pushes
+         the article down and never costs the reader their scroll position
+       · slides away while the reader scrolls down, returns on the first
+         upward scroll — so it cannot sit over the text being read
+       · closes itself on scroll, on Esc, on outside tap, and after a jump   */
+  nav.rail {
+    position: sticky; top: 10px; z-index: 30;
+    background: var(--cream);
+    border: 1px solid rgba(30, 96, 110, 0.3);
+    border-left: 3px solid var(--green1);
+    border-radius: 8px;
+    margin: 0 0 24px; padding: 0;
+    font-size: 14px;
+    box-shadow: 0 8px 20px rgba(14, 38, 56, 0.10);
+    transition: transform 0.22s ease, opacity 0.22s ease;
+  }
+  nav.rail.is-hidden { transform: translateY(-135%); opacity: 0; pointer-events: none; }
+
+  nav.rail .rail-toggle {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: none; border: 0; cursor: pointer;
+    padding: 13px 16px; text-align: left;
+    font-family: inherit; font-weight: 700; color: var(--green2);
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  nav.rail .rail-toggle:hover { color: var(--orange); }
+  nav.rail .rail-toggle:focus-visible { outline: 2px solid var(--green1); outline-offset: -3px; border-radius: 6px; }
+  nav.rail .rail-toggle .count {
+    margin-left: auto; font-size: 12px; font-weight: 700;
+    letter-spacing: 0; text-transform: none; color: var(--green1);
+  }
+  nav.rail .rail-chev {
+    width: 9px; height: 9px; flex: 0 0 auto; margin-top: -3px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(45deg); transition: transform 0.2s ease;
+  }
+  nav.rail.is-open .rail-chev { transform: rotate(-135deg); margin-top: 3px; }
+
+  nav.rail .rail-body {
+    display: none;
+    position: absolute; left: -3px; right: -1px; top: 100%;
+    background: var(--cream);
+    border: 1px solid rgba(30, 96, 110, 0.3); border-top: 0;
+    border-radius: 0 0 8px 8px;
+    padding: 4px 16px 14px;
+    max-height: min(62vh, 460px); overflow-y: auto;
+    box-shadow: 0 14px 24px rgba(14, 38, 56, 0.14);
+  }
+  nav.rail.is-open .rail-body { display: block; }
+
+  nav.rail ol { list-style: none; padding: 0; margin: 0; counter-reset: item; }
+  nav.rail li { padding: 7px 0; counter-increment: item; border-top: 1px solid rgba(14, 38, 56, 0.08); }
+  nav.rail li:first-child { border-top: 0; }
+  nav.rail a { color: var(--navy); text-decoration: none; display: flex; gap: 8px; align-items: baseline; }
+  nav.rail a:hover { color: var(--orange); }
+  nav.rail a::before {
+    content: counter(item, decimal-leading-zero);
+    color: var(--green1); font-weight: 700; font-size: 12px; min-width: 24px;
+  }
+
+  /* Jump targets clear the sticky TOC bar instead of hiding under it. */
+  h2.section { scroll-margin-top: 76px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    nav.rail { transition: none; }
+    nav.rail .rail-chev { transition: none; }
+  }
+
+  /* Headings */
+  h1.hero { font-size: clamp(28px, 3.6vw, 44px); font-weight: 700; line-height: 1.15; margin: 0 0 8px; }
+  .overline {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--green1);
+  }
+  h2.section {
+    font-size: 25px; font-weight: 700; color: var(--navy);
+    border-bottom: 2px solid var(--green1);
+    padding-bottom: 8px; margin: 46px 0 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  h2.section .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 999px;
+    background: var(--green1); color: var(--cream);
+    font-size: 15px; font-weight: 700; flex: 0 0 auto;
+  }
+  h2.section .ico { color: var(--green1); flex: 0 0 auto; }
+  h3.sub { font-size: 17.5px; font-weight: 700; color: var(--green2); margin: 26px 0 8px; display: flex; align-items: center; gap: 8px; }
+
+  /* Callouts */
+  .callout { padding: 14px 18px; border-radius: 6px; margin: 14px 0; display: flex; gap: 12px; align-items: flex-start; }
+  .callout .icon { flex: 0 0 auto; margin-top: 2px; }
+  .callout p { margin: 0; }
+  .callout p + p { margin-top: 8px; }
+  .callout strong { font-weight: 700; }
+  .callout.warn   { background: rgba(176, 58, 46, 0.08);  border-left: 4px solid var(--danger); }
+  .callout.warn .icon { color: var(--danger); }
+  .callout.info   { background: rgba(30, 96, 110, 0.08);  border-left: 4px solid var(--info); }
+  .callout.info .icon { color: var(--info); }
+  .callout.ok     { background: rgba(25, 107, 60, 0.08);  border-left: 4px solid var(--ok); }
+  .callout.ok .icon { color: var(--ok); }
+  .callout.accent { background: rgba(233, 180, 15, 0.10); border-left: 4px solid var(--orange); }
+  .callout.accent .icon { color: #a97f06; }
+
+  /* Tables */
+  .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0; }
+  .tw table.d6 { margin: 0; }
+  table.d6 { border-collapse: collapse; width: 100%; font-size: 14px; margin: 14px 0; }
+  /* overflow-wrap on cells: a long unbreakable token in a cell (a config key like
+     stt.echo_transcripts, a path) otherwise sets a min-content width wider than the
+     .tw scroll box, which measured as an overflowing table at 375px. */
+  table.d6 th { background: var(--green1); color: var(--cream); text-align: left; padding: 10px 12px; font-weight: 700; overflow-wrap: anywhere; }
+  table.d6 td { padding: 10px 12px; border-bottom: 1px solid rgba(14, 38, 56, 0.14); vertical-align: top; overflow-wrap: anywhere; }
+  table.d6 tr:last-child td { border-bottom: 0; }
+  table.d6 code { background: rgba(14, 38, 56, 0.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  table.d6.tight th:first-child { width: 30%; }
+
+  /* Code blocks + copy button.
+     The copy button used to be absolutely positioned over the <pre>, which covered
+     the first lines of code on narrow screens. It now sits in its own row above the
+     block (flex + order), so it can never overlap the code. */
+  .code-wrap { position: relative; margin: 14px 0; display: flex; flex-direction: column; }
+  pre.code {
+    background: var(--code-bg); color: var(--cream);
+    padding: 16px 18px; border-radius: 8px;
+    overflow-x: auto; font-size: 13.5px; line-height: 1.62; margin: 0;
+  }
+  pre.code .cmt { color: #7fa3ab; }
+  pre.code .var { color: var(--orange); }
+  button.copy {
+    order: -1; position: static; align-self: flex-end; margin: 0 0 6px;
+    background: rgba(255,255,255,0.08); color: var(--cream);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
+    padding: 4px 10px; font-size: 11px; cursor: pointer;
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  button.copy:hover { background: rgba(233, 180, 15, 0.2); border-color: var(--orange); }
+  button.copy.copied { background: rgba(25, 107, 60, 0.35); border-color: var(--ok); }
+
+  p code, li code, td code { background: rgba(14, 38, 56, 0.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin: 8px 0; }
+  ul.dots { padding-left: 22px; }
+  ul.dots li { margin: 6px 0; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; padding: 3px 10px;
+    border-radius: 999px; margin-right: 4px;
+  }
+  .badge.blocked { background: rgba(176,58,46,0.15); color: var(--danger); }
+  .badge.staged  { background: rgba(30,96,110,0.15); color: var(--green2); }
+  .badge.done    { background: rgba(25,107,60,0.15); color: var(--ok); }
+  .badge.accent  { background: rgba(233,180,15,0.18); color: #8a6804; }
+
+  /* Hero */
+  .hero-block {
+    background: linear-gradient(135deg, rgba(30,96,110,0.09), rgba(233,180,15,0.07));
+    padding: 26px 30px; border-radius: 10px; margin-bottom: 30px;
+  }
+  .hero-top { display: flex; gap: 18px; align-items: center; }
+  .hero-top img, .hero-top svg { width: 66px; height: 66px; flex: 0 0 auto; }
+  .hero-meta { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--green2); margin-top: 14px; }
+  .hero-meta span strong { color: var(--navy); }
+
+  /* Time pill */
+  .timepill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(30,96,110,0.10); color: var(--green2);
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px;
+  }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+  .flow-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+  .flow .node {
+    flex: 1 1 0; min-width: 150px;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(30,96,110,0.28); border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .flow .node .k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--green1); }
+  .flow .node .v { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
+  .flow .node .d { font-size: 12.5px; color: var(--green2); margin-top: 4px; }
+  .flow .arrow { display: flex; align-items: center; color: var(--green1); font-weight: 700; font-size: 20px; flex: 0 0 auto; }
+  .flow .flow-sep { display: flex; justify-content: center; color: var(--green1); font-weight: 700; font-size: 18px; line-height: 1; margin: -4px 0; }
+  /* ── Mobile / narrow screens ──────────────────────────────────────────────
+     Three narrow-screen fixes, each verified by measurement:
+     1. Flow diagram: the arrow was rotated 90° while the row still stretched its
+        items, so the rotated arrow's box grew over the neighbouring cards.
+        Swap the glyph for a real "down" arrow at font-size:0 instead — no
+        transform means no oversized box.
+     2. Code blocks: long lines forced horizontal dragging on every block.
+        pre-wrap keeps the real newlines (so the copied text is unchanged) and
+        wraps the long ones.
+     3. Tables: a fixed 30% first column pushed three tables wider than their
+        scroll container. Let the columns size themselves instead. */
+  @media (max-width: 640px) {
+    .flow-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .flow .node { min-width: 0; width: 100%; }
+    .flow .arrow {
+      flex: 0 0 auto; align-self: center; transform: none;
+      font-size: 0; line-height: 1; padding: 2px 0;
+    }
+    .flow .arrow::before { content: "\2193"; font-size: 20px; color: var(--green1); }
+    .flow .flow-sep { display: none; }
+
+    pre.code {
+      white-space: pre-wrap; overflow-wrap: anywhere;
+      font-size: 12.5px; padding: 14px 14px;
+    }
+
+    table.d6 { font-size: 13px; }
+    table.d6 th, table.d6 td { padding: 8px 9px; }
+    table.d6.tight th:first-child { width: auto; }
+  }
+
+  /* Footer */
+  footer.doc-foot { font-size: 12px; color: var(--green2); opacity: .85; margin-top: 52px; padding-top: 16px; border-top: 1px solid rgba(14,38,56,0.14); }
+
+  @media print {
+    nav.rail { display: none; }
+    .grid-layout { display: block; }
+    button.copy { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="hero-block">
+    <div class="hero-top">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="The1ight">
+        <defs>
+          <linearGradient id="bg" x1="64" y1="448" x2="448" y2="64" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#15333B"/><stop offset="1" stop-color="#214C54"/>
+          </linearGradient>
+          <linearGradient id="beam" x1="150" y1="390" x2="372" y2="110" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#EAB308"/><stop offset="0.52" stop-color="#FFD94C"/><stop offset="1" stop-color="#FDF5DA"/>
+          </linearGradient>
+        </defs>
+        <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+        <path d="M194 184 283 122h55v268h-73V211l-71 44v-71Z" fill="url(#beam)"/>
+        <path d="m360 100 11 30 30 11-30 11-11 30-11-30-30-11 30-11 11-30Z" fill="#FFF8D6"/>
+        <rect x="145" y="390" width="222" height="14" rx="7" fill="url(#beam)" opacity=".9"/>
+      </svg>
+      <div>
+        <div class="overline"><strong style="color:var(--green2)">The1ight</strong> · Mobile Agent · Hermes Agent · Hướng dẫn học viên</div>
+        <h1 class="hero">Nhắn tin với AI bằng <span style="color:var(--green1)">giọng nói</span>, chuyển thành chữ <span style="color:#a97f06">miễn phí</span></h1>
+      </div>
+    </div>
+    <div class="hero-meta">
+      <span><strong>Kết quả:</strong> gửi voice note trong Telegram, AI hiểu và trả lời</span>
+      <span><strong>Thời gian:</strong> 20–30 phút</span>
+      <span><strong>Yêu cầu trước:</strong> Hermes đã chạy, bot Telegram đã nối</span>
+    </div>
+  </header>
+
+  <div class="grid-layout">
+
+    <nav class="rail" id="toc" aria-label="Mục lục">
+      <button class="rail-toggle" id="toc-toggle" type="button" aria-expanded="false" aria-controls="toc-body">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+        Mục lục
+        <span class="count">11 mục</span>
+        <span class="rail-chev" aria-hidden="true"></span>
+      </button>
+      <div class="rail-body" id="toc-body">
+      <ol>
+        <li><a href="#result">Kết quả cuối cùng</a></li>
+        <li><a href="#model">Hiểu đúng mô hình</a></li>
+        <li><a href="#prereq">Chuẩn bị</a></li>
+        <li><a href="#enable">Bật nhận dạng giọng nói</a></li>
+        <li><a href="#whisper">Cài Whisper local</a></li>
+        <li><a href="#check">Kiểm tra trước khi dùng</a></li>
+        <li><a href="#first">Gửi voice note đầu tiên</a></li>
+        <li><a href="#reply">Cho AI trả lời bằng giọng nói</a></li>
+        <li><a href="#fallback">Nếu máy quá yếu</a></li>
+        <li><a href="#trouble">Sự cố thường gặp</a></li>
+        <li><a href="#done">Checklist hoàn tất</a></li>
+      </ol>
+      </div>
+    </nav>
+
+    <main>
+
+      <!-- ─── 01 · RESULT ─── -->
+      <h2 class="section" id="result">
+        <span class="num">01</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+        Kết quả cuối cùng
+      </h2>
+
+      <p>Làm xong bài này, anh chị <strong>bấm nút mic trong Telegram</strong>, nói một câu, rồi AI hiểu và trả lời —
+      không cần gõ phím, <strong>không tốn thêm tiền cho phần chuyển giọng nói thành chữ</strong>.</p>
+
+      <div class="flow">
+        <div class="flow-row">
+          <div class="node"><div class="k">Bước 1</div><div class="v">Voice note Telegram</div><div class="d">Gửi cho bot như gửi cho bạn bè.</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="k">Bước 2</div><div class="v">Whisper trên máy</div><div class="d">Chuyển giọng nói thành chữ, chạy ngay trên máy anh chị.</div></div>
+        </div>
+        <div class="flow-sep">↓</div>
+        <div class="flow-row">
+          <div class="node"><div class="k">Bước 3</div><div class="v">Bot gửi lại transcript</div><div class="d">Anh chị thấy ngay phần chữ nó nghe được, để kiểm tra.</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="k">Bước 4</div><div class="v">AI xử lý và trả lời</div><div class="d">Hiểu yêu cầu, trả lời bằng chữ hoặc bằng giọng nói.</div></div>
+        </div>
+      </div>
+
+      <div class="callout ok">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <p><strong>Phần miễn phí:</strong> bước chuyển giọng nói thành chữ chạy trên máy anh chị, không có phí theo phút và
+        không cần API key. Không có giới hạn số lần gửi voice note.</p>
+      </div>
+
+      <!-- ─── 02 · MODEL ─── -->
+      <h2 class="section" id="model">
+        <span class="num">02</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 9h6v6H9z"></path></svg>
+        Hiểu đúng mô hình
+      </h2>
+
+      <p>Có <strong>hai lớp hoàn toàn độc lập</strong>. Hiểu sai chỗ này là lý do nhiều bạn bị kẹt.</p>
+
+      <table class="d6">
+        <thead><tr><th>Lớp</th><th>Việc nó làm</th><th>Cần gì</th><th>Chi phí</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Nghe → chữ</strong></td>
+            <td>Nhận voice note, chuyển thành văn bản</td>
+            <td>Whisper cài trên máy</td>
+            <td><strong>Miễn phí</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Hiểu → trả lời</strong></td>
+            <td>Đọc phần chữ, hiểu yêu cầu, trả lời và dùng công cụ</td>
+            <td>Model AI của Hermes</td>
+            <td>Theo gói / API anh chị đã có</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <div>
+          <p><strong>Bài này bật lớp thứ nhất.</strong> Lớp thứ hai anh chị đã cài ở buổi trước — bài này không đổi model AI, chỉ thêm khả năng nghe.</p>
+          <p>Nghĩa là sau bài này, phần model không tốn thêm đồng nào. Chỉ có phần nghe là mới, và nó miễn phí.</p>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Đây là voice note, không phải gọi điện.</strong> Anh chị gửi một đoạn ghi âm, AI xử lý rồi trả lời —
+          giống nhắn tin. Không phải cuộc gọi thoại thời gian thực.</p>
+          <p>Máy chạy Hermes phải đang bật. Nếu Hermes chạy trên VPS, điện thoại anh chị chỉ cần Telegram.</p>
+        </div>
+      </div>
+
+      <!-- ─── 03 · PREREQ ─── -->
+      <h2 class="section" id="prereq">
+        <span class="num">03</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M2 12h20"></path></svg>
+        Chuẩn bị
+      </h2>
+
+      <p>Bài này nối tiếp buổi cài Hermes và buổi nối bot Telegram. Anh chị <strong>không cài lại</strong> những thứ đó.</p>
+
+      <table class="d6">
+        <thead><tr><th>Thứ</th><th>Yêu cầu</th><th>Kiểm tra thế nào</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Hermes</strong></td><td>Lệnh <code>hermes</code> chạy được</td><td><code>hermes status</code></td></tr>
+          <tr><td><strong>Bot Telegram</strong></td><td>Đã nối và nhắn tin chữ cho bot thì có trả lời</td><td>gửi thử một tin chữ</td></tr>
+          <tr><td><strong>Gateway đang chạy</strong></td><td>Bot sống, không phải chạy tay mỗi lần</td><td><code>hermes gateway status</code></td></tr>
+          <tr><td><strong>Quyền cài phần mềm</strong></td><td>Bước 05 cần cài Whisper</td><td>macOS: có Homebrew. Linux: có <code>sudo</code>. Windows: có Python</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p>Nếu <strong>tin chữ còn chưa được trả lời</strong>, đừng làm bài này. Quay lại bài bot Telegram trước —
+        voice note đi qua đúng đường đó.</p>
+      </div>
+
+      <!-- ─── 04 · ENABLE ─── -->
+      <h2 class="section" id="enable">
+        <span class="num">04</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+        Bật nhận dạng giọng nói
+      </h2>
+
+      <p>Mở terminal trên máy đang chạy Hermes và chạy đúng 6 dòng này:</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c1">hermes config set stt.enabled true
+hermes config set stt.provider local
+hermes config set stt.local.model small
+hermes config set stt.language vi
+hermes config set stt.echo_transcripts true
+hermes gateway restart   <span class="cmt"># bắt buộc — không restart thì cấu hình mới chưa có tác dụng</span></pre>
+        <button class="copy" data-target="c1">Copy</button>
+      </div>
+
+      <h3 class="sub">Từng dòng có nghĩa gì</h3>
+      <table class="d6">
+        <thead><tr><th>Dòng</th><th>Ý nghĩa</th></tr></thead>
+        <tbody>
+          <tr><td><code>stt.enabled true</code></td><td>Bật tự động xử lý voice note gửi tới.</td></tr>
+          <tr><td><code>stt.provider local</code></td><td>Chuyển giọng nói thành chữ <strong>ngay trên máy</strong>, không gửi audio lên dịch vụ trả tiền.</td></tr>
+          <tr><td><code>stt.local.model small</code></td><td>Model nghe. <code>small</code> đủ tốt cho tiếng Việt và không quá nặng.</td></tr>
+          <tr><td><code>stt.language vi</code></td><td>Nói cho Whisper biết người nói dùng tiếng Việt.</td></tr>
+          <tr><td><code>stt.echo_transcripts true</code></td><td>Bot gửi lại phần chữ nó nghe được, để anh chị kiểm tra ngay trong chat.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Đây là chỗ sai phổ biến nhất:</strong> mặc định của Hermes là tiếng Anh (<code>en</code>).
+          Nếu bỏ dòng <code>stt.language vi</code>, voice note tiếng Việt sẽ bị nhận thành chữ vô nghĩa
+          hoặc bị đoán sai ngôn ngữ.</p>
+          <p>Tài liệu Hermes nói rõ: người không nói tiếng Anh <em>nên đặt <code>stt.language</code> một lần</em>
+          theo mã ngôn ngữ của mình.</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>Khi anh chị đã chọn <code>stt.provider</code>, Hermes <strong>tôn trọng đúng lựa chọn đó</strong> —
+        nó không tự ý chuyển sang dịch vụ trả tiền. Nếu provider đó chưa sẵn sàng, nó báo lỗi chứ không âm thầm tính phí.</p>
+      </div>
+
+      <!-- ─── 05 · WHISPER ─── -->
+      <h2 class="section" id="whisper">
+        <span class="num">05</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+        Cài Whisper local
+      </h2>
+
+      <div class="callout accent">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span>
+        <div>
+          <p><strong>Đọc kỹ mục này.</strong> Đây là bước mà phần lớn các bạn bị kẹt.</p>
+          <p>Đặt <code>stt.provider local</code> ở Bước 04 <strong>không tự tạo ra</strong> khả năng nghe.
+          Nó chỉ bảo Hermes <em>“hãy dùng Whisper trên máy”</em>. Nếu máy chưa có Whisper thì Hermes không có gì để dùng —
+          và voice note sẽ bị bỏ qua.</p>
+        </div>
+      </div>
+
+      <h3 class="sub">Chọn một trong hai cách</h3>
+      <p>Hermes tìm engine nghe local theo thứ tự: gói Python <code>faster-whisper</code> trước, rồi tới
+      lệnh <code>whisper</code> có sẵn trên máy. Anh chị chỉ cần <strong>một</strong> trong hai.</p>
+
+      <h3 class="sub">Cách A — cài lệnh <code>whisper</code> (nhanh nhất, đang dùng trong lớp)</h3>
+
+      <p><strong>macOS:</strong></p>
+      <div class="code-wrap">
+        <pre class="code" id="c2">brew install ffmpeg openai-whisper
+whisper --help   <span class="cmt"># thấy danh sách tham số là cài xong</span></pre>
+        <button class="copy" data-target="c2">Copy</button>
+      </div>
+
+      <p><strong>Ubuntu / Debian:</strong></p>
+      <div class="code-wrap">
+        <pre class="code" id="c3">sudo apt update &amp;&amp; sudo apt install -y ffmpeg
+python3 -m pip install -U openai-whisper
+whisper --help</pre>
+        <button class="copy" data-target="c3">Copy</button>
+      </div>
+
+      <p><strong>Windows (PowerShell):</strong></p>
+      <div class="code-wrap">
+        <pre class="code" id="c4">py -3.11 -m pip install -U openai-whisper
+choco install ffmpeg   <span class="cmt"># hoặc: scoop install ffmpeg</span>
+whisper --help</pre>
+        <button class="copy" data-target="c4">Copy</button>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <div>
+          <p><strong>Cần cả <code>ffmpeg</code>, không chỉ Whisper.</strong> Telegram gửi voice note ở định dạng
+          <code>.ogg/opus</code>. <code>ffmpeg</code> là thứ chuyển nó sang dạng Whisper đọc được. Thiếu nó thì
+          Whisper không mở được file audio.</p>
+        </div>
+      </div>
+
+      <div class="callout accent">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span>
+        <p><strong>Lần nghe đầu tiên sẽ chậm.</strong> Whisper phải tải model về máy — model <code>small</code> khoảng
+        460 MB. Chỉ tải một lần. Những lần sau nhanh hơn hẳn.</p>
+      </div>
+
+      <h3 class="sub">Cách B — cài gói Python <code>faster-whisper</code></h3>
+      <p>Dùng khi anh chị không cài được lệnh <code>whisper</code>, hoặc muốn chạy trong đúng môi trường của Hermes.
+      Gói này phải nằm trong môi trường ảo của Hermes, không phải Python dùng chung của máy.
+      Thay đường dẫn bên dưới bằng đường dẫn thật của <code>hermes</code> trên máy anh chị
+      (tìm bằng <code>which hermes</code>).</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c5"><span class="cmt"># trỏ đúng Python trong môi trường của Hermes</span>
+uv pip install --python "$(dirname "$(dirname "$(which hermes)")")/bin/python" faster-whisper
+
+hermes gateway restart   <span class="cmt"># để Hermes nhận ra gói mới</span></pre>
+        <button class="copy" data-target="c5">Copy</button>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <div>
+          <p>Hermes cũng có thể <strong>tự cài <code>faster-whisper</code></strong> khi cần, và việc đó mặc định được bật.
+          Cách B ở trên là để anh chị chủ động, khi muốn biết chắc nó đã cài xong.</p>
+          <p>Nếu cách A đã chạy, <strong>bỏ qua cách B</strong> — không cần cài hai thứ.</p>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Chạy <code>pip install faster-whisper</code> một mình thường không có tác dụng.</strong>
+          Lệnh đó cài vào Python nào đang được gọi, không phải vào môi trường Hermes đang chạy.
+          Đây là lý do nhiều bạn cài xong mà bot vẫn không nghe được gì.</p>
+        </div>
+      </div>
+
+      <!-- ─── 06 · CHECK ─── -->
+      <h2 class="section" id="check">
+        <span class="num">06</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg>
+        Kiểm tra trước khi dùng
+      </h2>
+
+      <p>Chạy hai lệnh này và tự đối chiếu kết quả:</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c6">hermes config get stt
+command -v whisper   <span class="cmt"># Windows: where.exe whisper</span></pre>
+        <button class="copy" data-target="c6">Copy</button>
+      </div>
+
+      <table class="d6">
+        <thead><tr><th>Phải thấy</th><th>Nghĩa là</th></tr></thead>
+        <tbody>
+          <tr><td><code>enabled: true</code></td><td>Đã bật xử lý voice note.</td></tr>
+          <tr><td><code>provider: local</code></td><td>Dùng Whisper trên máy, không gọi dịch vụ cloud.</td></tr>
+          <tr><td><code>language: vi</code></td><td>Đã đặt tiếng Việt.</td></tr>
+          <tr><td><code>small</code></td><td>Model nghe đã chọn.</td></tr>
+          <tr><td>Một đường dẫn file, ví dụ <code>/opt/homebrew/bin/whisper</code></td><td>Đã có lệnh <code>whisper</code> trên máy.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>Hermes tìm lệnh <code>whisper</code> ở <code>/opt/homebrew/bin</code> và <code>/usr/local/bin</code> trước,
+        rồi mới tới PATH. Nên kể cả khi gateway khởi động với PATH ngắn, nó vẫn tìm thấy Whisper cài bằng Homebrew.</p>
+      </div>
+
+      <!-- ─── 07 · FIRST ─── -->
+      <h2 class="section" id="first">
+        <span class="num">07</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        Gửi voice note đầu tiên
+      </h2>
+
+      <ol class="steps">
+        <li>Mở Telegram, vào đúng chat với bot của anh chị.</li>
+        <li>Bấm và giữ nút <strong>mic</strong> ở góc phải ô nhập tin nhắn.</li>
+        <li>Nói một câu rõ ràng, khoảng 5–10 giây. Ví dụ: <em>“Hãy lập cho tôi ba việc quan trọng nhất hôm nay.”</em></li>
+        <li>Thả tay để gửi.</li>
+        <li>Đợi bot xử lý — lần đầu có thể mất 1–2 phút vì đang tải model.</li>
+      </ol>
+
+      <div class="callout ok">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <div>
+          <p><strong>Kết quả đúng:</strong> bot gửi lại một dòng có biểu tượng 🎙️ kèm <em>phần chữ nó nghe được</em>,
+          rồi trả lời yêu cầu của anh chị.</p>
+          <p>Nếu thấy phần chữ đó nghĩa là <strong>lớp nghe đã chạy</strong>. Còn lại là việc của model AI.</p>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <p><strong>Không thấy dòng 🎙️ nào, và bot im lặng?</strong> Gần như chắc chắn là Bước 05 chưa xong.
+        Xem dòng đầu tiên trong bảng sự cố ở Bước 10.</p>
+      </div>
+
+      <!-- ─── 08 · REPLY ─── -->
+      <h2 class="section" id="reply">
+        <span class="num">08</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        Cho AI trả lời bằng giọng nói
+      </h2>
+
+      <p>Phần trên là <strong>anh chị nói</strong>. Phần này là <strong>AI nói lại</strong>. Gõ trong chat với bot:</p>
+
+      <table class="d6">
+        <thead><tr><th>Lệnh</th><th>Tác dụng</th></tr></thead>
+        <tbody>
+          <tr><td><code>/voice on</code></td><td>Bật chế độ voice. AI trả lời bằng giọng nói khi anh chị gửi voice note.</td></tr>
+          <tr><td><code>/voice tts</code></td><td>AI trả lời bằng giọng nói cho <em>cả</em> tin nhắn chữ.</td></tr>
+          <tr><td><code>/voice off</code></td><td>Tắt, chỉ trả lời bằng chữ.</td></tr>
+          <tr><td><code>/voice status</code></td><td>Xem đang ở chế độ nào.</td></tr>
+        </tbody>
+      </table>
+
+      <p>Giọng nói trả lời dùng Edge TTS — miễn phí và không cần API key:</p>
+
+      <div class="code-wrap">
+        <pre class="code" id="c7">hermes config set tts.provider edge
+hermes gateway restart</pre>
+        <button class="copy" data-target="c7">Copy</button>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>Trả lời bằng giọng nói cũng cần <code>ffmpeg</code> để tạo file âm thanh. Anh chị đã cài ở Bước 05 rồi.</p>
+      </div>
+
+      <!-- ─── 09 · FALLBACK ─── -->
+      <h2 class="section" id="fallback">
+        <span class="num">09</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"></path><path d="M9 8V2"></path><path d="M15 8V2"></path><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"></path></svg>
+        Nếu máy quá yếu
+      </h2>
+
+      <p>Whisper chạy trên CPU nên lần nghe đầu khá nặng. Nếu máy anh chị quá yếu, có một phương án dự phòng
+      <strong>vẫn miễn phí</strong>: dùng Groq, một dịch vụ có gói miễn phí và trả kết quả rất nhanh.</p>
+
+      <p>Đổi một dòng:</p>
+      <div class="code-wrap">
+        <pre class="code" id="c8">hermes config set stt.provider groq
+hermes gateway restart</pre>
+        <button class="copy" data-target="c8">Copy</button>
+      </div>
+
+      <p>Sau đó thêm <code>GROQ_API_KEY</code> vào file bí mật của Hermes. Xem đường dẫn file đó bằng:</p>
+      <div class="code-wrap">
+        <pre class="code" id="c9">hermes config env-path</pre>
+        <button class="copy" data-target="c9">Copy</button>
+      </div>
+
+      <div class="callout warn">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+        <div>
+          <p><strong>Khác biệt quan trọng:</strong> với <code>provider local</code>, audio <em>không rời khỏi máy</em>.
+          Với <code>provider groq</code>, voice note của anh chị <strong>được gửi lên máy chủ của Groq</strong> để xử lý.</p>
+          <p>Đừng dùng đường này cho ghi âm có nội dung riêng tư.</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <p>API key là mật khẩu. Không dán vào chat, không chụp màn hình chia sẻ, không commit lên git.</p>
+      </div>
+
+      <!-- ─── 10 · TROUBLE ─── -->
+      <h2 class="section" id="trouble">
+        <span class="num">10</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+        Sự cố thường gặp
+      </h2>
+
+      <p>Đây là những lỗi các bạn trong lớp đã gặp. Tra theo triệu chứng.</p>
+
+      <table class="d6">
+        <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Cách sửa</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Bot nhận voice note nhưng <strong>hoàn toàn im lặng</strong>, không có dòng 🎙️ nào</td>
+            <td>Máy chưa có Whisper nào để dùng. <code>stt.provider local</code> đã bật nhưng không có engine phía sau</td>
+            <td>Làm <strong>Bước 05</strong>. Kiểm tra lại bằng <code>command -v whisper</code>.</td>
+          </tr>
+          <tr>
+            <td>Chữ nghe được <strong>sai ngôn ngữ</strong> hoặc vô nghĩa, dù giọng Việt rõ</td>
+            <td>Chưa đặt <code>stt.language</code>. Mặc định của Hermes là <code>en</code></td>
+            <td><code>hermes config set stt.language vi</code> rồi <code>hermes gateway restart</code>.</td>
+          </tr>
+          <tr>
+            <td>Sửa config xong nhưng <strong>không có gì thay đổi</strong></td>
+            <td>Gateway vẫn đang chạy với cấu hình cũ trong bộ nhớ</td>
+            <td><code>hermes gateway restart</code>. Bắt buộc sau mỗi lần sửa config.</td>
+          </tr>
+          <tr>
+            <td><code>whisper: command not found</code></td>
+            <td>Chưa cài, hoặc cài rồi nhưng cửa sổ terminal hiện tại chưa nạp lại PATH</td>
+            <td>Mở một cửa sổ terminal mới rồi thử lại. Sau đó restart gateway.</td>
+          </tr>
+          <tr>
+            <td>Whisper có, nhưng báo <strong>không đọc được file audio</strong></td>
+            <td>Thiếu <code>ffmpeg</code> — không chuyển được <code>.ogg/opus</code> của Telegram</td>
+            <td>Cài <code>ffmpeg</code> theo Bước 05, rồi restart gateway.</td>
+          </tr>
+          <tr>
+            <td>Voice note <strong>đầu tiên rất chậm</strong>, sau đó nhanh</td>
+            <td>Đang tải model Whisper về máy, khoảng 460 MB</td>
+            <td>Không phải lỗi. Chờ một lần, các lần sau dùng model đã lưu.</td>
+          </tr>
+          <tr>
+            <td>Đã đặt <code>stt.local.model: whisper-1</code> nhưng chất lượng vẫn kém</td>
+            <td><code>whisper-1</code> là tên model <em>trên cloud</em>, không phải model local. Hermes âm thầm quay về <code>base</code></td>
+            <td>Dùng tên model local hợp lệ: <code>tiny</code>, <code>base</code>, <code>small</code>, <code>medium</code>, <code>large-v3</code>.</td>
+          </tr>
+          <tr>
+            <td>Thêm danh sách từ vựng riêng nhưng <strong>không có tác dụng</strong></td>
+            <td><code>initial_prompt</code> chỉ áp dụng cho đường <code>faster-whisper</code>. Với lệnh <code>whisper</code> (cách A), Hermes bỏ qua phần này</td>
+            <td>Nếu cần từ vựng riêng, dùng cách B ở Bước 05.</td>
+          </tr>
+          <tr>
+            <td>Voice note dài bị <strong>bỏ giữa đường</strong></td>
+            <td>Mỗi lần xử lý local có giới hạn thời gian khoảng 5 phút</td>
+            <td>Chia thành các đoạn 1–2 phút, hoặc dùng Groq ở Bước 09.</td>
+          </tr>
+          <tr>
+            <td>Máy kêu to, nóng, chậm khi vừa nghe vừa chạy việc khác</td>
+            <td>Whisper chạy trên CPU, ăn tài nguyên trong lúc xử lý</td>
+            <td>Bình thường. Có thể cho model tự nhả bộ nhớ khi rảnh.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+        <div>
+          <p>Muốn xem log để biết chính xác nó chết ở đâu:</p>
+          <p><code>hermes logs errors</code> — tìm các dòng có chữ <code>STT</code>.</p>
+        </div>
+      </div>
+
+      <!-- ─── 11 · DONE ─── -->
+      <h2 class="section" id="done">
+        <span class="num">11</span>
+        <svg class="ico" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        Checklist hoàn tất
+      </h2>
+
+      <table class="d6 tight">
+        <thead><tr><th>#</th><th>Hạng mục</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Tin nhắn <strong>chữ</strong> với bot đã được trả lời (làm từ bài trước)</td></tr>
+          <tr><td>2</td><td><code>hermes config get stt</code> hiện <code>enabled: true</code>, <code>provider: local</code>, <code>language: vi</code></td></tr>
+          <tr><td>3</td><td><code>command -v whisper</code> trả về một đường dẫn file</td></tr>
+          <tr><td>4</td><td><code>ffmpeg</code> đã cài</td></tr>
+          <tr><td>5</td><td>Đã <code>hermes gateway restart</code> sau lần sửa config cuối cùng</td></tr>
+          <tr><td>6</td><td>Gửi voice note và thấy dòng 🎙️ kèm phần chữ <strong>đúng tiếng Việt</strong></td></tr>
+          <tr><td>7</td><td>AI đã trả lời nội dung mình vừa nói</td></tr>
+          <tr><td>8</td><td>Đã thử <code>/voice status</code> để biết mình đang ở chế độ nào</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout ok">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <p>Từ giờ, mỗi khi có ý tưởng mà không tiện gõ, anh chị chỉ cần bấm mic và nói.
+        Không giới hạn số lần, không tốn thêm phí cho phần nghe.</p>
+      </div>
+
+      <h3 class="sub">Nguồn tham khảo</h3>
+      <ul class="dots">
+        <li><a href="https://hermes-agent.nousresearch.com/docs/user-guide/configuration" target="_blank" rel="noopener">Hermes Agent — Configuration, mục Speech-to-Text (STT)</a> — nguồn cho toàn bộ tên khoá cấu hình, mặc định <code>language: en</code>, và danh sách provider.</li>
+        <li><a href="https://github.com/openai/whisper" target="_blank" rel="noopener">OpenAI Whisper — kho mã chính thức</a> — nguồn cho cách cài, yêu cầu <code>ffmpeg</code>, và danh sách kích thước model.</li>
+      </ul>
+
+      <footer class="doc-foot">
+        The1ight · Mobile Agent · Hướng dẫn học viên — nhắn tin với AI bằng giọng nói, miễn phí.<br>
+        Lệnh và menu có thể thay đổi theo phiên bản Hermes. Khi khác với tài liệu, tin theo
+        <code>hermes &lt;lệnh&gt; --help</code> trên máy anh chị.
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Wrap wide tables so they scroll inside their own box instead of
+  // pushing the whole page sideways on narrow screens.
+  document.querySelectorAll('table.d6').forEach(t => {
+    if (t.parentElement && t.parentElement.classList.contains('tw')) return;
+    const w = document.createElement('div');
+    w.className = 'tw';
+    t.parentNode.insertBefore(w, t);
+    w.appendChild(t);
+  });
+
+  document.querySelectorAll('button.copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const el = document.getElementById(btn.getAttribute('data-target'));
+      if (!el) return;
+      try {
+        // textContent (not innerText): on narrow screens long lines soft-wrap, and
+        // innerText would mirror those visual wraps into the copied text. textContent
+        // returns the real source text, so the copied block stays runnable.
+        await navigator.clipboard.writeText(el.textContent);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied'; btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+      } catch (e) { btn.textContent = 'Copy failed'; }
+    });
+  });
+
+  /* ── Collapsible table of contents ───────────────────────────────────────
+     Collapsed by default. Opens as an overlay (no layout shift, the reader
+     keeps their place), and closes itself the moment the reader moves on.
+     While scrolling down the closed bar slides out of the way entirely, so it
+     never covers the text; the first upward scroll brings it back. */
+  (function () {
+    const nav = document.getElementById('toc');
+    const toggle = document.getElementById('toc-toggle');
+    if (!nav || !toggle) return;
+
+    const SCROLL_AWAY = 140;   // don't hide the bar above this offset
+    const SETTLE = 48;         // movement that counts as "the reader moved on"
+    let openedAt = 0;
+    let lastY = window.scrollY;
+    let lastRun = 0;
+
+    function setOpen(open) {
+      nav.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) openedAt = window.scrollY;
+    }
+    function isOpen() { return nav.classList.contains('is-open'); }
+
+    toggle.addEventListener('click', function () { setOpen(!isOpen()); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isOpen()) { setOpen(false); toggle.focus(); }
+    });
+
+    // Outside tap closes it (a tap on the toggle is inside nav, so it survives).
+    document.addEventListener('click', function (e) {
+      if (isOpen() && !nav.contains(e.target)) setOpen(false);
+    });
+
+    // Choosing a section closes the menu and lets the jump land below the bar.
+    nav.querySelectorAll('.rail-body a').forEach(function (link) {
+      link.addEventListener('click', function () { setOpen(false); });
+    });
+
+    function onScroll() {
+      const y = window.scrollY;
+      const delta = y - lastY;
+
+      // Moving the page closes an open panel first — the reader asked to read on.
+      if (isOpen() && Math.abs(y - openedAt) > SETTLE) setOpen(false);
+
+      // Still open means the reader is looking at the menu, not the article.
+      if (isOpen()) {
+        nav.classList.remove('is-hidden');
+        lastY = y;
+        return;
+      }
+
+      // Closed: slide out of the way while travelling down, come back on the
+      // first upward movement. Deliberately evaluated even on the same scroll
+      // that just closed the panel, so a single downward fling clears the screen.
+      if (y > SCROLL_AWAY && delta > 4) nav.classList.add('is-hidden');
+      else if (delta < -4 || y <= SCROLL_AWAY) nav.classList.remove('is-hidden');
+      lastY = y;
+    }
+
+    // Runs directly on scroll, throttled by timestamp rather than via
+    // requestAnimationFrame: rAF is throttled in background tabs and
+    // offscreen frames, which would leave the menu stuck on screen there.
+    function onScrollThrottled() {
+      const now = Date.now();
+      if (now - lastRun < 16) return;
+      lastRun = now;
+      onScroll();
+    }
+    window.addEventListener('scroll', onScrollThrottled, { passive: true });
+    document.addEventListener('scroll', onScrollThrottled, { passive: true });
+  })();
+</script>
+</body>
+</html>

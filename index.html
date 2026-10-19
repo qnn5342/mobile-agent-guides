@@ -145,8 +145,11 @@
   .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0; }
   .tw table.d6 { margin: 0; }
   table.d6 { border-collapse: collapse; width: 100%; font-size: 14px; margin: 14px 0; }
-  table.d6 th { background: var(--green1); color: var(--cream); text-align: left; padding: 10px 12px; font-weight: 700; }
-  table.d6 td { padding: 10px 12px; border-bottom: 1px solid rgba(14, 38, 56, 0.14); vertical-align: top; }
+  /* overflow-wrap on cells: a long unbreakable token in a cell (a config key like
+     stt.echo_transcripts, a path) otherwise sets a min-content width wider than the
+     .tw scroll box, which measured as an overflowing table at 375px. */
+  table.d6 th { background: var(--green1); color: var(--cream); text-align: left; padding: 10px 12px; font-weight: 700; overflow-wrap: anywhere; }
+  table.d6 td { padding: 10px 12px; border-bottom: 1px solid rgba(14, 38, 56, 0.14); vertical-align: top; overflow-wrap: anywhere; }
   table.d6 tr:last-child td { border-bottom: 0; }
   table.d6 code { background: rgba(14, 38, 56, 0.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
   table.d6.tight th:first-child { width: 30%; }
